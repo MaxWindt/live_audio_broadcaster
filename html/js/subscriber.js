@@ -44,8 +44,8 @@ ws.onmessage = function (e)	{
 				debug("server info:", wsMsg.Value);
 				break;
 			case 'error':
-				error("server error:", wsMsg.Value);
-				error("server error:", "Connection Failed. Please try again.");
+				//error("server error:", wsMsg.Value);
+				error("server error:", "Server was not ready. Please try again, slower :)");
 				document.getElementById('output').classList.add('hidden');
 				document.getElementById('channels').classList.add('hidden');
 				break;
