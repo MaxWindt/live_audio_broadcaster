@@ -36,12 +36,10 @@ function setTranslations(translations) {
     translations["channels_description"];
   document.getElementById("nochannels").textContent =
     translations["no_channels"];
-  document.getElementById("reload").textContent =
+  document.getElementById("switch_channel").textContent =
     translations["switch_channel"];
-  document.getElementById("footer").innerHTML =
-    '<a href="https://github.com/porjo/babelcast">' +
-    translations["powered_by"] +
-    "</a>";
+  document.getElementById("powered_by").textContent =
+    translations["powered_by"];
 }
 
 // Check if the language starts with "de" (for German)
