@@ -84,9 +84,30 @@ pc.ontrack = function (event) {
   el.srcObject = event.streams[0];
   el.autoplay = true;
   el.playsInline = true;
-  el.controls = true;
 
   document.getElementById("media").appendChild(el);
+  // Get the existing play/pause button
+  let playButton = document.getElementById("play");
+  // Toggle play/pause functionality
+  playButton.onclick = function () {
+    if (el.paused) {
+      el.play();
+      playButton.innerHTML = '<span class="icon-pause"></span>';
+    } else {
+      el.pause();
+      playButton.innerHTML = '<span class="icon-play"></span>';
+    }
+  };
+
+  // Make the play/pause button visible
+  playButton.classList.remove("hidden");
+  // Wait for audio to load before checking if autoPlay was successfull, then adapt button Icon
+  setTimeout(function (){
+    if (el.paused) {
+      playButton.innerHTML = '<span class="icon-play"></span>';
+    }  
+  }, 500); 
+  
 };
 
 pc.addTransceiver("audio");

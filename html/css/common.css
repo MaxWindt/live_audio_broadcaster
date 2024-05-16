@@ -162,6 +162,20 @@ input, textarea {
 	font-size: 1.2em;
 }
 
+#play {
+    border-radius: 50%;
+    width: 75px;
+    height: 75px;
+}
+
+.icon-play {
+    font-size: xx-large;
+}
+.icon-pause {
+    font-size: xx-large;
+}
+
+
 /* Button */
 
 /* This button was generated using CSSButtonGenerator.com */
