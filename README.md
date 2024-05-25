@@ -1,4 +1,4 @@
-# Babelcast
+# Live Audio Broadcaster
 
 A server which allows audio publishers to broadcast to subscribers on a channel, using nothing more than a modern web browser.
 
