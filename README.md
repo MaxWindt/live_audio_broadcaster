@@ -9,17 +9,16 @@ A translator would act as a publisher and people wanting to hear the translation
 
 ## Installation 
 
-Download [Zip folder](https://github.com/MaxWindt/live_audio_broadcaster/archive/refs/heads/main.zip).
+Download [Zip folder](https://github.com/MaxWindt/live_audio_broadcaster/archive/refs/heads/main.zip) and unzip
 
 ## Custom DNS (optional)
 
 Install [Docker Desktop](https://docs.docker.com/desktop/)
 
-run 
-
+Run in folder
+```
 docker compose up 
-
-in folder
+```
 
 ## Usage
 extract 
