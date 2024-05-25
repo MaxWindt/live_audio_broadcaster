@@ -21,7 +21,6 @@ docker compose up
 ```
 
 ## Usage
-extract 
 ```
 Usage of ./babelcast:
   -port int
