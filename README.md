@@ -19,7 +19,7 @@ Run in folder
 ```
 docker compose up 
 ```
-
+Edit Settings under 'http://localhost:8084/admin'
 ## Usage
 ```
 Usage of ./babelcast:
