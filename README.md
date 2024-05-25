@@ -11,7 +11,7 @@ A translator would act as a publisher and people wanting to hear the translation
 
 Download [Zip folder](https://github.com/MaxWindt/live_audio_broadcaster/archive/refs/heads/main.zip).
 
-##Custom DNS (optional)
+## Custom DNS (optional)
 
 Install [Docker Desktop](https://docs.docker.com/desktop/)
 
