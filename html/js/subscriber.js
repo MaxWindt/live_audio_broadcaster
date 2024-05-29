@@ -14,6 +14,7 @@ function channelClick(e) {
   document.getElementById("reload").classList.remove("hidden");
   let params = {};
   params.Channel = e.target.innerText;
+  document.getElementById("subtitle").innerText = e.target.innerText;
   let val = { Key: "connect_subscriber", Value: params };
   wsSend(val);
 }
@@ -102,12 +103,11 @@ pc.ontrack = function (event) {
   // Make the play/pause button visible
   playButton.classList.remove("hidden");
   // Wait for audio to load before checking if autoPlay was successfull, then adapt button Icon
-  setTimeout(function (){
+  setTimeout(function () {
     if (el.paused) {
       playButton.innerHTML = '<span class="icon-play"></span>';
-    }  
-  }, 500); 
-  
+    }
+  }, 500);
 };
 
 pc.addTransceiver("audio");
