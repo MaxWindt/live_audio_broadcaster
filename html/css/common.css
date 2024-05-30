@@ -151,13 +151,23 @@ input, textarea {
 	animation-iteration-count: infinite;
 }
 
-#reload {
+#bt_switch_channel {
 	font-size: 1em;
 	width: 200px;
 	height: 50px;
 }
 
-#reload .symbol {
+#bt_switch_channel .symbol {
+	margin: 0 5px;
+	font-size: 1.2em;
+}
+#bt_reload {
+	font-size: 1em;
+	width: 200px;
+	height: 50px;
+}
+
+#bt_reload .symbol {
 	margin: 0 5px;
 	font-size: 1.2em;
 }

@@ -8,6 +8,7 @@ var translation_de = {
     "Klicken Sie auf einen Kanalnamen unten, um eine Verbindung herzustellen.",
   no_channels: "Keine Kanäle gefunden",
   switch_channel: "Kanal wechseln",
+  span_reload: "Neu laden",
   powered_by: "Ermöglicht durch Babelcast",
 };
 
@@ -21,6 +22,7 @@ var translation_es = {
     "Haga clic en un nombre de canal a continuación para conectarse.",
   no_channels: "No se encontraron canales",
   switch_channel: "Cambiar canal",
+  span_reload: "recargar",
   powered_by: "Proporcionado por Babelcast",
 };
 
@@ -38,6 +40,9 @@ function setTranslations(translations) {
     translations["no_channels"];
   document.getElementById("switch_channel").textContent =
     translations["switch_channel"];
+  document.getElementById("span_reload").textContent =
+    translations["span_reload"];
+
   document.getElementById("powered_by").textContent =
     translations["powered_by"];
 }

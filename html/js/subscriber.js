@@ -4,19 +4,29 @@ var getChannelsId = setInterval(function () {
   wsSend(val);
 }, 1000);
 
-document.getElementById("reload").addEventListener("click", function () {
+document
+  .getElementById("bt_switch_channel")
+  .addEventListener("click", function () {
+    localStorage.removeItem("channel");
+    window.location.reload(false);
+  });
+
+document.getElementById("bt_reload").addEventListener("click", function () {
   window.location.reload(false);
 });
 
 function channelClick(e) {
   document.getElementById("output").classList.remove("hidden");
   document.getElementById("channels").classList.add("hidden");
-  document.getElementById("reload").classList.remove("hidden");
+
+  document.getElementById("bt_switch_channel").classList.remove("hidden");
+  document.getElementById("bt_reload").classList.remove("hidden");
+  document.getElementById("subtitle").innerText = e.target.innerText;
   let params = {};
   params.Channel = e.target.innerText;
-  document.getElementById("subtitle").innerText = e.target.innerText;
   let val = { Key: "connect_subscriber", Value: params };
   wsSend(val);
+  localStorage.setItem("channel", e.target.innerText);
 }
 
 function updateChannels(channels) {
@@ -43,11 +53,8 @@ ws.onmessage = function (e) {
         debug("server info:", wsMsg.Value);
         break;
       case "error":
-        //error("server error:", wsMsg.Value);
-        error(
-          "server error:",
-          "Server was not ready. Please try again, slower :)"
-        );
+        error("server error:", wsMsg.Value);
+
         document.getElementById("output").classList.add("hidden");
         document.getElementById("channels").classList.add("hidden");
         break;
@@ -55,12 +62,34 @@ ws.onmessage = function (e) {
         startSession(wsMsg.Value);
         break;
       case "channels":
-        updateChannels(wsMsg.Value);
+        if (localStorage.getItem("channel") === null) {
+          updateChannels(wsMsg.Value);
+        } else {
+          clearInterval(getChannelsId);
+          console.log("Using last channel");
+        }
+
         break;
       case "session_established": // wait for the message that session_subscriber was received
         document.getElementById("channels").classList.remove("hidden");
         document.getElementById("spinner").classList.add("hidden");
         console.log("session_established");
+        if (localStorage.getItem("channel") !== null) {
+          document.getElementById("output").classList.remove("hidden");
+          document.getElementById("channels").classList.add("hidden");
+
+          document
+            .getElementById("bt_switch_channel")
+            .classList.remove("hidden");
+          document.getElementById("bt_reload").classList.remove("hidden");
+          document.getElementById("subtitle").innerText =
+            localStorage.getItem("channel");
+          let params = {};
+          params.Channel = localStorage.getItem("channel");
+          let val = { Key: "connect_subscriber", Value: params };
+          wsSend(val);
+        }
+
         break;
       case "ice_candidate":
         pc.addIceCandidate(wsMsg.Value);
