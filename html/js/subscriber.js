@@ -8,11 +8,11 @@ document
   .getElementById("bt_switch_channel")
   .addEventListener("click", function () {
     localStorage.removeItem("channel");
-    window.location.reload(false);
+    window.location.reload(true);
   });
 
 document.getElementById("bt_reload").addEventListener("click", function () {
-  window.location.reload(false);
+  window.location.reload(true);
 });
 
 function channelClick(e) {
