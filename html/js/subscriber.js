@@ -7,11 +7,20 @@ var getChannelsId = setInterval(function () {
 document
   .getElementById("bt_switch_channel")
   .addEventListener("click", function () {
+    
+  // Close the existing PeerConnection
+  if (pc) {
+    pc.close();
+  }
     localStorage.removeItem("channel");
     window.location.reload(true);
   });
 
 document.getElementById("bt_reload").addEventListener("click", function () {
+  // Close the existing PeerConnection
+  if (pc) {
+    pc.close();
+  }
   window.location.reload(true);
 });
 
