@@ -24,12 +24,12 @@ Edit Settings under `http://localhost:8084/admin`
 ```
 Usage of ./babelcast:
   -port int
-    	listen on this port (default 8080)
+    	listen on this port (default 80)
   -webRoot string
     	web root directory (default "html")
 ```
 
-Then point your web browser to `http://<server-ip>/`
+Then point your web browser to `http://localhost/publisher.html`
 
 If the `PUBLISHER_PASSWORD` environment variable is set, then publishers will be required to enter the
 password before they can connect.
