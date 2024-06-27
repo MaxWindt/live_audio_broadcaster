@@ -4,16 +4,16 @@ var getChannelsId = setInterval(function () {
   wsSend(val);
 }, 1000);
 
+var checkConnection = setInterval(function () {
+  console.log("checking_connection");
+}, 1000);
+
 document
   .getElementById("bt_switch_channel")
   .addEventListener("click", function () {
     localStorage.removeItem("channel");
     window.location.reload(true);
   });
-
-document.getElementById("bt_reload").addEventListener("click", function () {
-  window.location.reload(true);
-});
 
 function channelClick(e) {
   document.getElementById("output").classList.remove("hidden");
@@ -114,19 +114,49 @@ pc.ontrack = function (event) {
   el.srcObject = event.streams[0];
   el.autoplay = true;
   el.playsInline = true;
+  el.id = "audio";
 
-  document.getElementById("media").appendChild(el);
+  media_placeholder = document.getElementById("media");
+  media_placeholder.innerHTML = "";
+  media_placeholder.appendChild(el);
+  audio = document.getElementById("audio");
+  // reload when connection is lost
+  audio.onended = function () {
+    console.log("stream ended, reloading...");
+    reloadJS();
+  };
+  // reload when connection is lost and you try to play again
+  audio.onwaiting = function () {
+    console.log("waiting for audio data, reloading...");
+    reloadJS();
+  };
+  // reload when connection is lost and you try to play again
+  audio.onerror = function () {
+    console.log("error loading audio data, reloading...");
+    reloadJS();
+  };
+
+  // updating current time display #TODO This needs to be rounded and put in minute/hour form
+  audio.ontimeupdate = function () {
+    console.log(audio.currentTime);
+  };
+
   // Get the existing play/pause button
   let playButton = document.getElementById("play");
   // Toggle play/pause functionality
   playButton.onclick = function () {
     if (el.paused) {
       el.play();
-      playButton.innerHTML = '<span class="icon-pause"></span>';
     } else {
       el.pause();
-      playButton.innerHTML = '<span class="icon-play"></span>';
     }
+  };
+  //update play button
+  audio.onplay = function () {
+    playButton.innerHTML = '<span class="icon-pause"></span>';
+  };
+  audio.onpause = function () {
+    playButton.innerHTML = '<span class="icon-play"></span>';
   };
 
   // Make the play/pause button visible
