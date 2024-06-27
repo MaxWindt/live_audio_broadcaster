@@ -11,6 +11,10 @@ var checkConnection = setInterval(function () {
 document
   .getElementById("bt_switch_channel")
   .addEventListener("click", function () {
+    // Close the existing PeerConnection
+    if (pc) {
+      pc.close();
+    }
     localStorage.removeItem("channel");
     window.location.reload(true);
   });
