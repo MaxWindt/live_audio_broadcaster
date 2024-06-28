@@ -67,6 +67,11 @@
 
         <script>
           function reloadJS() {
+            clearInterval(getChannelsId);
+            // Close the existing PeerConnection
+            if (pc) {
+              pc.close();
+            }
             const scripts = document.querySelectorAll("script");
             scripts.forEach((script) => {
               const newScript = document.createElement("script");
