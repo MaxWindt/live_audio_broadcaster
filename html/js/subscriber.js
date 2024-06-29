@@ -4,9 +4,17 @@ var getChannelsId = setInterval(function () {
   wsSend(val);
 }, 1000);
 
-var checkConnection = setInterval(function () {
-  console.log("checking_connection");
-}, 1000);
+// exprimentall automatc reload
+// var checkConnection = setInterval(function () {
+//   console.log("checking_connection");
+//   audio = document.getElementById("audio");
+//   if (audio.ended || audio.waiting) {
+//     console.log("audio is not playing, reloading...");
+//     console.log("ready state:");
+//     console.log(audio.readyState);
+//     reloadJS();
+//   }
+// }, 5000);
 
 document
   .getElementById("bt_switch_channel")
