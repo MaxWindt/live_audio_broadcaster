@@ -12,7 +12,7 @@ var getChannelsId = setInterval(function () {
 //     console.log("audio is not playing, reloading...");
 //     console.log("ready state:");
 //     console.log(audio.readyState);
-//     reloadJS();
+//     closeWS();
 //   }
 // }, 5000);
 
@@ -54,6 +54,12 @@ function updateChannels(channels) {
       c.addEventListener("click", channelClick);
       channelsEle.appendChild(c);
     });
+  }
+}
+
+function closeWS() {
+  if (ws) {
+    ws.close();
   }
 }
 
@@ -114,6 +120,15 @@ ws.onclose = function () {
   debug("WS connection closed");
   pc.close();
   document.getElementById("media").classList.add("hidden");
+  //reload scripts and reconnect to server
+  const scripts = document.querySelectorAll("script");
+  scripts.forEach((script) => {
+    if (script.src) {
+      const newScript = document.createElement("script");
+      newScript.src = script.src.split("?")[0] + "?t=" + new Date().getTime();
+      script.parentNode.replaceChild(newScript, script);
+    }
+  });
 };
 
 //
@@ -121,31 +136,40 @@ ws.onclose = function () {
 //
 
 pc.ontrack = function (event) {
-  //console.log("Ontrack", event);
-  let el = document.createElement(event.track.kind);
-  el.srcObject = event.streams[0];
-  el.autoplay = true;
-  el.playsInline = true;
-  el.id = "audio";
+  let audio = document.getElementById("audio");
+  // Check if the element already exists
 
-  media_placeholder = document.getElementById("media");
-  media_placeholder.innerHTML = "";
-  media_placeholder.appendChild(el);
+  if (audio) {
+    // Update the element's properties if it already exists
+    console.log("updating stream");
+    audio.srcObject = event.streams[0];
+  } else {
+    let el = document.createElement(event.track.kind);
+    // Create and append a new element if it doesn't exist
+    el.srcObject = event.streams[0];
+    el.autoplay = true;
+    el.playsInline = true;
+    el.id = "audio";
+
+    const media_placeholder = document.getElementById("media");
+    media_placeholder.innerHTML = "";
+    media_placeholder.appendChild(el);
+  }
   audio = document.getElementById("audio");
   // reload when connection is lost
   audio.onended = function () {
     console.log("stream ended, reloading...");
-    reloadJS();
+    closeWS();
   };
   // reload when connection is lost and you try to play again
   audio.onwaiting = function () {
     console.log("waiting for audio data, reloading...");
-    reloadJS();
+    closeWS();
   };
   // reload when connection is lost and you try to play again
   audio.onerror = function () {
     console.log("error loading audio data, reloading...");
-    reloadJS();
+    closeWS();
   };
 
   // updating current time display #TODO This needs to be rounded and put in minute/hour form
@@ -157,10 +181,10 @@ pc.ontrack = function (event) {
   let playButton = document.getElementById("play");
   // Toggle play/pause functionality
   playButton.onclick = function () {
-    if (el.paused) {
-      el.play();
+    if (audio.paused) {
+      audio.play();
     } else {
-      el.pause();
+      audio.pause();
     }
   };
   //update play button
@@ -175,7 +199,7 @@ pc.ontrack = function (event) {
   playButton.classList.remove("hidden");
   // Wait for audio to load before checking if autoPlay was successfull, then adapt button Icon
   setTimeout(function () {
-    if (el.paused) {
+    if (audio.paused) {
       playButton.innerHTML = '<span class="icon-play"></span>';
     }
   }, 500);

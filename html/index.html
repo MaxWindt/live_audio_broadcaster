@@ -54,7 +54,7 @@
           <div id="media"></div>
         </div>
         <div>
-          <button onclick="reloadJS()" id="bt_reload" class="button hidden">
+          <button onclick="closeWS()" id="bt_reload" class="button hidden">
             <span class="icon-arrows-cw"></span
             ><span id="span_reload">Reload</span>
           </button>
@@ -64,23 +64,6 @@
           <span class="icon-left-open"></span
           ><span id="switch_channel">Switch Channel</span>
         </button>
-
-        <script>
-          function reloadJS() {
-            clearInterval(getChannelsId);
-            // Close the existing PeerConnection
-            if (pc) {
-              pc.close();
-            }
-            const scripts = document.querySelectorAll("script");
-            scripts.forEach((script) => {
-              const newScript = document.createElement("script");
-              newScript.src =
-                script.src.split("?")[0] + "?t=" + new Date().getTime();
-              script.parentNode.replaceChild(newScript, script);
-            });
-          }
-        </script>
         <div id="error" class="hidden"></div>
         <div id="footer">
           <a href="https://github.com/porjo/babelcast"
