@@ -16,24 +16,7 @@ var getChannelsId = setInterval(function () {
 //   }
 // }, 5000);
 
-document
-  .getElementById("bt_switch_channel")
-  .addEventListener("click", function () {
-    // Close the existing PeerConnection
-    if (pc) {
-      pc.close();
-    }
-    localStorage.removeItem("channel");
-    window.location.reload(true);
-  });
-
 function channelClick(e) {
-  document.getElementById("output").classList.remove("hidden");
-  document.getElementById("channels").classList.add("hidden");
-
-  document.getElementById("bt_switch_channel").classList.remove("hidden");
-  document.getElementById("bt_reload").classList.remove("hidden");
-  document.getElementById("subtitle").innerText = e.target.innerText;
   let params = {};
   params.Channel = e.target.innerText;
   let val = { Key: "connect_subscriber", Value: params };
@@ -42,17 +25,54 @@ function channelClick(e) {
 }
 
 function updateChannels(channels) {
-  let channelsEle = document.querySelector("#channels ul");
+  let channelsEle = document.querySelector("#channels div");
   channelsEle.innerHTML = "";
   if (channels.length > 0) {
     clearInterval(getChannelsId);
     document.getElementById("nochannels").classList.add("hidden");
-    channels.forEach((e) => {
-      let c = document.createElement("li");
-      c.classList.add("channel");
-      c.innerText = e;
-      c.addEventListener("click", channelClick);
-      channelsEle.appendChild(c);
+    channels.forEach((channel) => {
+      let li = document.createElement("div");
+      li.classList.add("mdl-card__actions", "mdl-card--border");
+
+      // Create the button for the channel
+      let channelButton = document.createElement("a");
+      channelButton.classList.add(
+        "mdl-button",
+        "mdl-button--raised",
+        "mdl-js-button",
+        "mdl-js-ripple-effect"
+      );
+
+      // Set the innerHTML and icon based on the channel name
+      if (/live|original/i.test(channel)) {
+        channelButton.innerHTML =
+          '<i class="material-icons">record_voice_over</i> ' + channel;
+      } else if (/translation|übersetzung/i.test(channel)) {
+        channelButton.innerHTML =
+          '<i class="material-icons">translate</i> ' + channel;
+      } else {
+        channelButton.innerHTML = channel; // Default case if it doesn't match known types
+      }
+
+      // Add event listener for the button
+      channelButton.addEventListener("click", function () {
+        if (this.classList.contains("playing")) {
+          if (audio.paused) {
+            audio.play();
+          } else {
+            audio.pause();
+          }
+        } else {
+          this.classList.add("playing");
+          channelClick({ target: { innerText: channel } });
+        }
+      });
+
+      // Append the button to the list item
+      li.appendChild(channelButton);
+
+      // Append the list item to the channel list
+      channelsEle.appendChild(channelButton);
     });
   }
 }
@@ -73,19 +93,14 @@ ws.onmessage = function (e) {
       case "error":
         error("server error:", wsMsg.Value);
 
-        document.getElementById("output").classList.add("hidden");
+        // document.getElementById("output").classList.add("hidden");
         document.getElementById("channels").classList.add("hidden");
         break;
       case "sd_answer":
         startSession(wsMsg.Value);
         break;
       case "channels":
-        if (localStorage.getItem("channel") === null) {
-          updateChannels(wsMsg.Value);
-        } else {
-          clearInterval(getChannelsId);
-          console.log("Using last channel");
-        }
+        updateChannels(wsMsg.Value);
 
         break;
       case "session_established": // wait for the message that session_subscriber was received
@@ -93,17 +108,10 @@ ws.onmessage = function (e) {
         document.getElementById("spinner").classList.add("hidden");
         console.log("session_established");
         if (localStorage.getItem("channel") !== null) {
-          document.getElementById("output").classList.remove("hidden");
-          document.getElementById("channels").classList.add("hidden");
-
-          document
-            .getElementById("bt_switch_channel")
-            .classList.remove("hidden");
-          document.getElementById("bt_reload").classList.remove("hidden");
-          document.getElementById("subtitle").innerText =
-            localStorage.getItem("channel");
           let params = {};
           params.Channel = localStorage.getItem("channel");
+          // TODO Show the channel that is playing (maybe by adding a additional ID to the buttons that are named as the channels)
+          // getElementByText(ctx, params.Channel).classList.add("playing");
           let val = { Key: "connect_subscriber", Value: params };
           wsSend(val);
         }
@@ -188,19 +196,18 @@ pc.ontrack = function (event) {
     }
   };
   //update play button
+
   audio.onplay = function () {
-    playButton.innerHTML = '<span class="icon-pause"></span>';
+    playButton.innerHTML = '<i class="material-icons">pause</i>';
   };
   audio.onpause = function () {
-    playButton.innerHTML = '<span class="icon-play"></span>';
+    playButton.innerHTML = '<i class="material-icons">play_arrow</i>';
   };
 
-  // Make the play/pause button visible
   playButton.classList.remove("hidden");
-  // Wait for audio to load before checking if autoPlay was successfull, then adapt button Icon
   setTimeout(function () {
     if (audio.paused) {
-      playButton.innerHTML = '<span class="icon-play"></span>';
+      playButton.innerHTML = '<i class="material-icons">play_arrow</i>';
     }
   }, 500);
 };
