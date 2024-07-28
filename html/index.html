@@ -74,22 +74,6 @@
       </div>
     </div>
 
-    <script>
-      function reloadJS() {
-        clearInterval(getChannelsId);
-        // Close the existing PeerConnection
-        if (pc) {
-          pc.close();
-        }
-        const scripts = document.querySelectorAll("script");
-        scripts.forEach((script) => {
-          const newScript = document.createElement("script");
-          newScript.src =
-            script.src.split("?")[0] + "?t=" + new Date().getTime();
-          script.parentNode.replaceChild(newScript, script);
-        });
-      }
-    </script>
     <script src="js/common.js"></script>
     <script src="js/subscriber.js"></script>
     <script src="js/translations.js"></script>
