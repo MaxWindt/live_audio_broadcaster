@@ -19,12 +19,8 @@ var getChannelsId = setInterval(function () {
 document
   .getElementById("bt_switch_channel")
   .addEventListener("click", function () {
-    // Close the existing PeerConnection
-    if (pc) {
-      pc.close();
-    }
     localStorage.removeItem("channel");
-    window.location.reload(true);
+    hardReload();
   });
 
 function channelClick(e) {
@@ -63,6 +59,13 @@ function closeWS() {
   }
 }
 
+function hardReload() {
+  // Close the existing PeerConnection
+
+  closeWS();
+  window.location.reload(true);
+}
+
 ws.onmessage = function (e) {
   let wsMsg = JSON.parse(e.data);
   if ("Key" in wsMsg) {
@@ -75,6 +78,8 @@ ws.onmessage = function (e) {
 
         document.getElementById("output").classList.add("hidden");
         document.getElementById("channels").classList.add("hidden");
+        localStorage.removeItem("channel");
+        hardReload();
         break;
       case "sd_answer":
         startSession(wsMsg.Value);
@@ -137,8 +142,8 @@ ws.onclose = function () {
 
 pc.ontrack = function (event) {
   let audio = document.getElementById("audio");
-  // Check if the element already exists
 
+  // Check if the element already exists
   if (audio) {
     // Update the element's properties if it already exists
     console.log("updating stream");
@@ -156,6 +161,12 @@ pc.ontrack = function (event) {
     media_placeholder.appendChild(el);
   }
   audio = document.getElementById("audio");
+  // Hard Reload when audio is paused screen is shut off and gets on again. A fresh restart is needed
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && audio.paused) {
+      hardReload();
+    }
+  });
   // reload when connection is lost
   audio.onended = function () {
     console.log("stream ended, reloading...");
