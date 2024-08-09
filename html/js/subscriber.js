@@ -4,24 +4,26 @@ var getChannelsId = setInterval(function () {
   wsSend(val);
 }, 1000);
 
-// exprimentall automatc reload
-// var checkConnection = setInterval(function () {
-//   console.log("checking_connection");
-//   audio = document.getElementById("audio");
-//   if (audio.ended || audio.waiting) {
-//     console.log("audio is not playing, reloading...");
-//     console.log("ready state:");
-//     console.log(audio.readyState);
-//     closeWS();
-//   }
-// }, 5000);
+const themeButton = document.getElementById("themeButton");
+const themes = ["default", "dark", "blue", "green"];
+let currentTheme = 0;
+
+// Load saved theme on page load
+document.body.className = localStorage.getItem("lab_page_theme") || "default";
+
+// Save theme on change
+themeButton.addEventListener("click", () => {
+  currentTheme = (currentTheme + 1) % themes.length;
+  document.body.className = themes[currentTheme];
+  localStorage.setItem("lab_page_theme", themes[currentTheme]); // Save the selected theme
+});
 
 function channelClick(e) {
   let params = {};
   params.Channel = e.target.innerText;
   let val = { Key: "connect_subscriber", Value: params };
   wsSend(val);
-  localStorage.setItem("channel", e.target.innerText);
+  localStorage.setItem("lab_channel", e.target.innerText);
 }
 
 function updateChannels(channels) {
@@ -45,13 +47,16 @@ function updateChannels(channels) {
 
       // Set the innerHTML and icon based on the channel name
       if (/live|original/i.test(channel)) {
+        channelButton.id = "btn_original";
         channelButton.innerHTML =
           '<i class="material-icons">record_voice_over</i> ' + channel;
       } else if (/translation|übersetzung/i.test(channel)) {
+        channelButton.id = "btn_translation";
         channelButton.innerHTML =
           '<i class="material-icons">translate</i> ' + channel;
       } else {
-        channelButton.innerHTML = channel; // Default case if it doesn't match known types
+        channelButton.innerHTML =
+          '<i class="material-icons">music_cast</i> ' + channel; // Default case if it doesn't match known types
       }
 
       // Add event listener for the button
@@ -107,9 +112,9 @@ ws.onmessage = function (e) {
         document.getElementById("channels").classList.remove("hidden");
         document.getElementById("spinner").classList.add("hidden");
         console.log("session_established");
-        if (localStorage.getItem("channel") !== null) {
+        if (localStorage.getItem("lab_channel") !== null) {
           let params = {};
-          params.Channel = localStorage.getItem("channel");
+          params.Channel = localStorage.getItem("lab_channel");
           // TODO Show the channel that is playing (maybe by adding a additional ID to the buttons that are named as the channels)
           // getElementByText(ctx, params.Channel).classList.add("playing");
           let val = { Key: "connect_subscriber", Value: params };

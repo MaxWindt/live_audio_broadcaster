@@ -1,45 +1,130 @@
-.demo-card-wide.mdl-card {
-	width: 400px;
-	background: #28292a;
+:root {
+    --background-color: #F6A300;
+    --button-background-color: #FFE082;
+    --button-text-color: #000;
+    --play-button-color: #D62828;
+    --play-icon-color: #000;
+    --text-color: #000;
+    --theme-button-background: #000;
+    --theme-button-color: #fff;
 }
-.demo-card-wide > .mdl-card__title {
-  color: #fff;
-  height: 120px;
-  text-shadow: 0px 0px 10px #000000;
-  background: url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
-    center / cover;
-}
-.demo-card-wide > .mdl-card__menu {
-  color: #fff;
-}
-.reload {
-  color: #fff !important;
-}
-.mdl-button--raised {
-  background: #9b9b9b !important;
-  padding: 0 0 !important;
-  width: 100%;
-}
-.playing {
-  background: lightgreen !important;
-}
+
 body {
-  padding: 20px;
-  background: #141616;
-  position: relative;
-  width: auto !important;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: var(--background-color);
+    font-family: 'Roboto','Helvetica','Arial',sans-serif;
+    color: var(--text-color);
 }
 
-.mdl-button--fab {
-  margin: 10px !important;
+.theme-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 10px;
+    cursor: pointer;
 }
 
-.mdl-card__supporting-text {
-	color: #fff !important;
+.container {
+    text-align: center;
 }
 
-.prevent-select { /* feels more like an app*/
-  -webkit-user-select: none; /* Safari */
-  -ms-user-select: none; /* IE 10 and IE 11 */
-  user-select: none; /* Standard syntax */
+h1 {
+    font-size: 2em;
+    margin-bottom: 20px;
 }
+
+.button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 200px;
+    margin: 10px auto;
+    padding: 10px;
+    font-size: 1em;
+    font-weight: bold;
+    color: var(--button-text-color);
+    background-color: var(--button-background-color);
+    border: 2px solid #000;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    padding-left: 10px;
+    position: relative;
+}
+
+.button .material-icons {
+    margin-right: 10px;
+}
+
+.play-button .material-icons  {
+	font-size: 30px !important;
+	-webkit-transform: translate(-15px,-15px);
+	transform: translate(-15px,-15px);
+	line-height: 30px;
+}
+
+.play-button {
+    width: 60px;
+    height: 60px;
+    margin: 20px auto;
+    background-color: var(--play-button-color);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+	color: var(--button-background-color);
+
+		
+
+
+}
+
+
+/* Themes */
+body.dark {
+    --background-color: #1E1E1E;
+    --button-background-color: #333;
+    --button-text-color: #FFF;
+    --play-button-color: #BB86FC;
+    --play-icon-color: #FFF;
+    --text-color: #FFF;
+    --theme-button-background: #FFF;
+    --theme-button-color: #000;
+}
+
+body.blue {
+    --background-color: #007BFF;
+    --button-background-color: #ADD8E6;
+    --button-text-color: #000;
+    --play-button-color: #0056b3;
+    --play-icon-color: #FFF;
+    --text-color: #FFF;
+    --theme-button-background: #FFF;
+    --theme-button-color: #000;
+}
+
+body.green {
+    --background-color: #28a745;
+    --button-background-color: #90EE90;
+    --button-text-color: #000;
+    --play-button-color: #155724;
+    --play-icon-color: #FFF;
+    --text-color: #FFF;
+    --theme-button-background: #FFF;
+    --theme-button-color: #000;
+}
+
+.noselect {
+	-webkit-touch-callout: none; /* iOS Safari */
+	  -webkit-user-select: none; /* Safari */
+	   -khtml-user-select: none; /* Konqueror HTML */
+		 -moz-user-select: none; /* Old versions of Firefox */
+		  -ms-user-select: none; /* Internet Explorer/Edge */
+			  user-select: none; /* Non-prefixed version, currently
+									supported by Chrome, Edge, Opera and Firefox */
+  }

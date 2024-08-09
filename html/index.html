@@ -10,84 +10,66 @@
     <!-- Material Design icon font -->
     <link rel="stylesheet" href="font/font.css" />
     <link href="css/common.css" rel="stylesheet" />
-    <link href="fontello/css/fontello.css" rel="stylesheet" />
   </head>
 
-  <body class="prevent-select">
-    <div style="display: flex; justify-content: center">
-      <!-- Wide card with share menu button -->
-      <div class="demo-card-wide mdl-card mdl-shadow--2dp">
-        <div class="mdl-card__title">
-          <h2 class="mdl-card__title-text">Live Audio Broadcaster</h2>
-        </div>
-        <div class="mdl-card__menu">
-          <button
-            id="bt_reload"
-            class="mdl-button mdl-js-button mdl-js-ripple-effect reload"
-          >
-            <span id="span_reload">Reload</span>
-            <i class="material-icons">refresh</i>
-          </button>
-        </div>
-        <div class="mdl-card__supporting-text">
-          <div id="not-supported" class="hidden">
-            <p id="unsupported_browser">
-              Unfortunately your web browser doesn't appear to support WebRTC
-              which is required for this application. Please try another web
-              browser.
-            </p>
-          </div>
-          <div id="output" class="hidden">
-            <div id="media"></div>
-          </div>
-          <div id="supported">
-            <div id="channels" class="hidden">
-              <h3 id="channels_header">Channels</h3>
-              <p id="channels_description">
-                Click on a channel name below to connect.
-              </p>
-              <p id="nochannels"><i>No Channels found</i></p>
-              <div>
-                <div class="mdl-card__actions mdl-card--border">
-                  <a
-                    class="mdl-button mdl-button--raised mdl-js-button mdl-js-ripple-effect playing"
-                  >
-                    <i class="material-icons">translate</i>
-                    Translation Übersetzung
-                  </a>
-                </div>
-                <div class="mdl-card__actions mdl-card--border">
-                  <a
-                    class="mdl-button mdl-button mdl-button--raised mdl-js-button mdl-js-ripple-effect"
-                  >
-                    <i class="material-icons">record_voice_over</i>
-                    Live Original
-                  </a>
-                </div>
-              </div>
-            </div>
+  <body class="default">
+    <button class="mdl-button mdl-js-button mdl-button--icon"></button>
+    <div
+      class="mdl-button mdl-js-button mdl-button--icon theme-button mdl-button--icon"
+      id="themeButton"
+    >
+      <i class="material-icons">palette</i>
+    </div>
+    <!-- Wide card with share menu button -->
+
+    <div class="container noselect">
+      <h3>Live Audio Broadcaster</h3>
+
+      <div id="not-supported" class="hidden">
+        <p id="unsupported_browser">
+          Unfortunately your web browser doesn't appear to support WebRTC which
+          is required for this application. Please try another web browser.
+        </p>
+      </div>
+      <div id="output" class="hidden">
+        <div id="media"></div>
+      </div>
+      <div id="supported">
+        <div id="channels" class="">
+          <!-- <h1 id="channels_header">Channels</h3> -->
+          <p id="channels_description">
+            Click on a channel name below to connect.
+          </p>
+          <p id="nochannels"><i>No Channels found</i></p>
+          <div>
+            <button class="button">
+              <i class="material-icons">record_voice_over</i> Translation
+            </button>
+            <button class="button">
+              <i class="material-icons">translate</i>Live Original
+            </button>
           </div>
         </div>
-        <!-- Spinner and Play button -->
-        <div
-          id="spinner"
-          class="mdl-progress mdl-js-progress mdl-progress__indeterminate"
-        ></div>
-        <div style="display: flex; justify-content: center">
-          <button
-            id="play"
-            class="mdl-button mdl-js-button mdl-button--fab mdl-js-ripple-effect mdl-button--colored"
-          >
-            <i class="material-icons">play_arrow</i>
-          </button>
-        </div>
-        <div id="error" class="hidden"></div>
-        <div id="footer">
-          <a href="https://github.com/porjo/babelcast">
-            <span class="icon-github-circled" id="github-logo"></span>
-            <span id="powered_by">Powered by Babelcast</span>
-          </a>
-        </div>
+      </div>
+      <!-- Spinner and Play button -->
+      <div
+        id="spinner"
+        class="mdl-progress mdl-js-progress mdl-progress__indeterminate"
+      ></div>
+      <div style="display: flex; justify-content: center">
+        <button
+          id="play"
+          class="play-button mdl-button mdl-js-button mdl-button--fab mdl-js-ripple-effect"
+        >
+          <i class="material-icons">play_arrow</i>
+        </button>
+      </div>
+      <div id="error" class="hidden"></div>
+      <div id="footer">
+        <a href="https://github.com/porjo/babelcast">
+          <span class="icon-github-circled" id="github-logo"></span>
+          <span id="powered_by">Powered by Babelcast</span>
+        </a>
       </div>
     </div>
     <script src="js/common.js"></script>

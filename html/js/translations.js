@@ -9,6 +9,8 @@ var translation_de = {
   no_channels: "Keine Kanäle gefunden",
   switch_channel: "Kanal wechseln",
   span_reload: "Neu laden",
+  btn_original: "Direkte Übertragung",
+  btn_translation: "Übersetzung",
   powered_by: "Ermöglicht durch Babelcast",
 };
 
@@ -23,6 +25,8 @@ var translation_es = {
   no_channels: "No se encontraron canales",
   switch_channel: "Cambiar canal",
   span_reload: "recargar",
+  btn_translation: "traducción",
+  btn_original: "original",
   powered_by: "Proporcionado por Babelcast",
 };
 
@@ -42,6 +46,10 @@ function setTranslations(translations) {
     translations["switch_channel"];
   document.getElementById("span_reload").textContent =
     translations["span_reload"];
+  document.getElementById("btn_translation").textContent =
+    translations["btn_translation"];
+  document.getElementById("btn_original").textContent =
+    translations["btn_original"];
 
   document.getElementById("powered_by").textContent =
     translations["powered_by"];
@@ -51,7 +59,7 @@ function setTranslations(translations) {
 if (navigator.language.startsWith("de")) {
   setTranslations(translation_de);
 }
-// Check if the language starts with "es" (for Spanish)
-else if (navigator.language.startsWith("es")) {
-  setTranslations(translation_es);
-}
+// // Check if the language starts with "es" (for Spanish)
+// else if (navigator.language.startsWith("es")) {
+//   setTranslations(translation_es);
+// }
