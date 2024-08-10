@@ -4,18 +4,18 @@ var getChannelsId = setInterval(function () {
   wsSend(val);
 }, 1000);
 
+
 const themeButton = document.getElementById("themeButton");
 const themes = ["default", "dark", "blue", "green"];
-let currentTheme = 0;
 
 // Load saved theme on page load
-document.body.className = localStorage.getItem("lab_page_theme") || "default";
+let currentTheme = localStorage.getItem("lab_page_theme") || 0;
 
 // Save theme on change
 themeButton.addEventListener("click", () => {
   currentTheme = (currentTheme + 1) % themes.length;
   document.body.className = themes[currentTheme];
-  localStorage.setItem("lab_page_theme", themes[currentTheme]); // Save the selected theme
+  localStorage.setItem("lab_page_theme", currentTheme); // Save the selected theme
 });
 
 function channelClick(e) {
@@ -88,6 +88,13 @@ function closeWS() {
   }
 }
 
+function hardReload() {
+  // Close the existing PeerConnection
+
+  closeWS();
+  window.location.reload(true);
+}
+
 ws.onmessage = function (e) {
   let wsMsg = JSON.parse(e.data);
   if ("Key" in wsMsg) {
@@ -100,6 +107,8 @@ ws.onmessage = function (e) {
 
         // document.getElementById("output").classList.add("hidden");
         document.getElementById("channels").classList.add("hidden");
+        localStorage.removeItem("channel");
+        hardReload();
         break;
       case "sd_answer":
         startSession(wsMsg.Value);
@@ -150,8 +159,8 @@ ws.onclose = function () {
 
 pc.ontrack = function (event) {
   let audio = document.getElementById("audio");
-  // Check if the element already exists
 
+  // Check if the element already exists
   if (audio) {
     // Update the element's properties if it already exists
     console.log("updating stream");
@@ -169,6 +178,12 @@ pc.ontrack = function (event) {
     media_placeholder.appendChild(el);
   }
   audio = document.getElementById("audio");
+  // Hard Reload when audio is paused screen is shut off and gets on again. A fresh restart is needed
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && audio.paused) {
+      hardReload();
+    }
+  });
   // reload when connection is lost
   audio.onended = function () {
     console.log("stream ended, reloading...");

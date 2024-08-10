@@ -1,0 +1,82 @@
+@import url("https://fonts.googleapis.com/css?family=Lora:400,700|Roboto&display=swap");
+body,
+html {
+  height: 100%;
+}
+
+body {
+  font-family: "Roboto", sans-serif;
+  padding: 1rem 1rem 12rem;
+  background-color: #efefef;
+text-align: center;
+}
+
+h1,
+h2 {
+  font-family: "Lora", serif;
+}
+
+.btn {
+  background-color: white;
+}
+
+#copy_button {
+  position: relative;
+  overflow: visible;
+}
+
+#copy_tooltip {
+  display: block;
+  font-size: 80%;
+  position: absolute;
+  background: #1a3ca2;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  margin: auto;
+  opacity: 0;
+}
+#copy_tooltip.active {
+  -webkit-animation: slide-up 0.15s cubic-bezier(0.51, 0.92, 0.265, 1.55) both;
+  animation: slide-up 0.15s cubic-bezier(0.51, 0.92, 0.265, 1.55) both;
+}
+#copy_tooltip.inactive {
+  -webkit-animation: slide-up 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) reverse both;
+  animation: slide-up 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) reverse both;
+}
+#copy_tooltip:after {
+  content: "";
+  position: absolute;
+  top: 98%;
+  left: 50%;
+  margin-left: -8px;
+  width: 0;
+  height: 0;
+  border-top: 8px solid #1a3ca2;
+  border-right: 8px solid transparent;
+  border-left: 8px solid transparent;
+}
+
+@-webkit-keyframes slide-up {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(-35px) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes slide-up {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(-35px) scale(1);
+    opacity: 1;
+  }
+}
