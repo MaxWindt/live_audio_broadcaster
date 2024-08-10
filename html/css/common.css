@@ -78,10 +78,10 @@ h1 {
     cursor: pointer;
     position: relative;
 	color: var(--button-background-color);
+}
 
-		
-
-
+.active{
+    background-color: var(--background-color);
 }
 
 
@@ -117,6 +117,53 @@ body.green {
     --text-color: #FFF;
     --theme-button-background: #FFF;
     --theme-button-color: #000;
+}
+
+/* White Theme */
+body.white {
+    --background-color: #FFFFFF;
+    --button-background-color: #F0F0F0;
+    --button-text-color: #000;
+    --play-button-color: #D62828;
+    --play-icon-color: #000;
+    --text-color: #000;
+    --theme-button-background: #000;
+    --theme-button-color: #FFF;
+}
+
+/* Default Theme Active Button */
+body.default .mdl-button.playing {
+    background-color: #ffd54f;
+    color: #000;
+    border: 2px solid #f57c00;
+}
+
+/* Dark Theme Active Button */
+body.dark .mdl-button.playing {
+    background-color: #ff9800;
+    color: #fff;
+    border: 2px solid #ff5722;
+}
+
+/* Blue Theme Active Button */
+body.blue .mdl-button.playing {
+    background-color: #4fc3f7;
+    color: #000;
+    border: 2px solid #0288d1;
+}
+
+/* Green Theme Active Button */
+body.green .mdl-button.playing {
+    background-color: #aed581;
+    color: #000;
+    border: 2px solid #689f38;
+}
+
+/* White Theme Active Button */
+body.white .mdl-button.playing {
+    background-color: #ffe0b2;
+    color: #000;
+    border: 2px solid #ff7043;
 }
 
 .noselect {

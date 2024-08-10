@@ -4,12 +4,12 @@ var getChannelsId = setInterval(function () {
   wsSend(val);
 }, 1000);
 
-
 const themeButton = document.getElementById("themeButton");
-const themes = ["default", "dark", "blue", "green"];
+const themes = ["default", "dark", "blue", "green", "white"];
 
 // Load saved theme on page load
 let currentTheme = localStorage.getItem("lab_page_theme") || 0;
+document.body.className = themes[currentTheme];
 
 // Save theme on change
 themeButton.addEventListener("click", () => {
@@ -20,10 +20,12 @@ themeButton.addEventListener("click", () => {
 
 function channelClick(e) {
   let params = {};
-  params.Channel = e.target.innerText;
+  params.Channel = e.target.id;
   let val = { Key: "connect_subscriber", Value: params };
   wsSend(val);
-  localStorage.setItem("lab_channel", e.target.innerText);
+
+  localStorage.setItem("lab_channel", e.target.id);
+  softReload();
 }
 
 function updateChannels(channels) {
@@ -39,23 +41,23 @@ function updateChannels(channels) {
       // Create the button for the channel
       let channelButton = document.createElement("a");
       channelButton.classList.add(
+        "button",
         "mdl-button",
         "mdl-button--raised",
         "mdl-js-button",
         "mdl-js-ripple-effect"
       );
-channelButton.id = channel;
+      channelButton.id = channel;
       // Set the innerHTML and icon based on the channel name
       if (/live|original/i.test(channel)) {
-        
         channelButton.innerHTML =
-          '<i class="material-icons">record_voice_over</i> ' + channel;
+          '<i class="material-icons">record_voice_over</i> <i id="btn_original">Original</i>';
       } else if (/translation|übersetzung/i.test(channel)) {
         channelButton.innerHTML =
-          '<i class="material-icons">translate</i> ' + channel;
+          '<i class="material-icons">translate</i> <i id="btn_translation">Translation</i>';
       } else {
         channelButton.innerHTML =
-          '<i class="material-icons">music_cast</i> ' + channel; // Default case if it doesn't match known types
+          '<i class="material-icons">music_note</i>' + channel; // Default case if it doesn't match known types
       }
 
       // Add event listener for the button
@@ -68,7 +70,7 @@ channelButton.id = channel;
           }
         } else {
           this.classList.add("playing");
-          channelClick({ target: { innerText: channel } });
+          channelClick({ target: { id: channelButton.id } }); // Ensure the correct button ID is passed
         }
       });
 
@@ -89,9 +91,19 @@ function closeWS() {
 
 function hardReload() {
   // Close the existing PeerConnection
-
   closeWS();
   window.location.reload(true);
+}
+function softReload() {
+  //reload scripts and reconnect to server
+  const scripts = document.querySelectorAll("script");
+  scripts.forEach((script) => {
+    if (script.src) {
+      const newScript = document.createElement("script");
+      newScript.src = script.src.split("?")[0] + "?t=" + new Date().getTime();
+      script.parentNode.replaceChild(newScript, script);
+    }
+  });
 }
 
 ws.onmessage = function (e) {
@@ -120,11 +132,10 @@ ws.onmessage = function (e) {
         document.getElementById("channels").classList.remove("hidden");
         document.getElementById("spinner").classList.add("hidden");
         console.log("session_established");
-        if (localStorage.getItem("lab_channel") !== null) {
+        if (localStorage.getItem("lab_channel") !== null || undefined) {
           let params = {};
           params.Channel = localStorage.getItem("lab_channel");
-          // TODO Show the channel that is playing (maybe by adding a additional ID to the buttons that are named as the channels)
-          // getElementByText(ctx, params.Channel).classList.add("playing");
+          document.getElementById(params.Channel).classList.add("playing");
           let val = { Key: "connect_subscriber", Value: params };
           wsSend(val);
         }
@@ -141,15 +152,7 @@ ws.onclose = function () {
   debug("WS connection closed");
   pc.close();
   document.getElementById("media").classList.add("hidden");
-  //reload scripts and reconnect to server
-  const scripts = document.querySelectorAll("script");
-  scripts.forEach((script) => {
-    if (script.src) {
-      const newScript = document.createElement("script");
-      newScript.src = script.src.split("?")[0] + "?t=" + new Date().getTime();
-      script.parentNode.replaceChild(newScript, script);
-    }
-  });
+  softReload();
 };
 
 //
