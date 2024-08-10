@@ -44,14 +44,13 @@ function updateChannels(channels) {
         "mdl-js-button",
         "mdl-js-ripple-effect"
       );
-
+channelButton.id = channel;
       // Set the innerHTML and icon based on the channel name
       if (/live|original/i.test(channel)) {
-        channelButton.id = "btn_original";
+        
         channelButton.innerHTML =
           '<i class="material-icons">record_voice_over</i> ' + channel;
       } else if (/translation|übersetzung/i.test(channel)) {
-        channelButton.id = "btn_translation";
         channelButton.innerHTML =
           '<i class="material-icons">translate</i> ' + channel;
       } else {
