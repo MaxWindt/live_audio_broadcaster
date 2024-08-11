@@ -14,7 +14,7 @@ body {
     padding: 0;
     display: flex;
     justify-content: center;
-    align-items: center;
+    /* align-items: center; */
     height: 100vh;
     background-color: var(--background-color);
     font-family: 'Roboto','Helvetica','Arial',sans-serif;
@@ -90,7 +90,7 @@ body.dark {
     --background-color: #1E1E1E;
     --button-background-color: #333;
     --button-text-color: #FFF;
-    --play-button-color: #BB86FC;
+    --play-button-color: #ffac91;
     --play-icon-color: #FFF;
     --text-color: #FFF;
     --theme-button-background: #FFF;
@@ -140,9 +140,9 @@ body.default .mdl-button.playing {
 
 /* Dark Theme Active Button */
 body.dark .mdl-button.playing {
-    background-color: #ff9800;
+    background-color: #666;
     color: #fff;
-    border: 2px solid #ff5722;
+    border: 2px solid #ffac91;
 }
 
 /* Blue Theme Active Button */

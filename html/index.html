@@ -13,9 +13,8 @@
   </head>
 
   <body class="default">
-    <button class="mdl-button mdl-js-button mdl-button--icon"></button>
     <div
-      class="mdl-button mdl-js-button mdl-button--icon theme-button mdl-button--icon"
+      class="mdl-button mdl-js-button mdl-button--icon theme-button mdl-button--icon noselect"
       id="themeButton"
     >
       <i class="material-icons">palette</i>
@@ -23,7 +22,7 @@
     <!-- Wide card with share menu button -->
 
     <div class="container noselect">
-      <h3>Live Audio Broadcaster</h3>
+      <h3>Audio Stream</h3>
 
       <div id="not-supported" class="hidden">
         <p id="unsupported_browser">
@@ -72,9 +71,26 @@
         </a>
       </div>
     </div>
+    <script>
+      const themeButton = document.getElementById("themeButton");
+      const themes = ["default", "dark", "blue", "green", "white"];
 
+      // Load saved theme on page load
+      let currentTheme = localStorage.getItem("lab_page_theme") || 0;
+      document.body.className = themes[currentTheme];
+
+      // Save theme on change
+      themeButton.addEventListener("click", () => {
+        currentTheme = (currentTheme + 1) % themes.length;
+        document.body.className = themes[currentTheme];
+        localStorage.setItem("lab_page_theme", currentTheme); // Save the selected theme
+      });
+    </script>
     <script src="js/common.js"></script>
     <script src="js/subscriber.js"></script>
     <script src="js/translations.js"></script>
+    <script>
+      translate_text();
+    </script>
   </body>
 </html>

@@ -4,36 +4,27 @@ var getChannelsId = setInterval(function () {
   wsSend(val);
 }, 1000);
 
-const themeButton = document.getElementById("themeButton");
-const themes = ["default", "dark", "blue", "green", "white"];
-
-// Load saved theme on page load
-let currentTheme = localStorage.getItem("lab_page_theme") || 0;
-document.body.className = themes[currentTheme];
-
-// Save theme on change
-themeButton.addEventListener("click", () => {
-  currentTheme = (currentTheme + 1) % themes.length;
-  document.body.className = themes[currentTheme];
-  localStorage.setItem("lab_page_theme", currentTheme); // Save the selected theme
-});
-
-function channelClick(e) {
-  let params = {};
-  params.Channel = e.target.id;
-  let val = { Key: "connect_subscriber", Value: params };
-  wsSend(val);
-
-  localStorage.setItem("lab_channel", e.target.id);
-  softReload();
-}
-
 function updateChannels(channels) {
   let channelsEle = document.querySelector("#channels div");
   channelsEle.innerHTML = "";
+
   if (channels.length > 0) {
     clearInterval(getChannelsId);
     document.getElementById("nochannels").classList.add("hidden");
+    // Helper function to assign a rank to each channel
+    function getChannelRank(channel) {
+      if (/live|original/i.test(channel)) return 1;
+      if (/translation|uebersetzung/i.test(channel)) return 2;
+      if (/english|englisch/i.test(channel)) return 3;
+      return 4;
+    }
+    // Sort channels by rank
+    channels.sort((a, b) => {
+      const rankA = getChannelRank(a);
+      const rankB = getChannelRank(b);
+      return rankA - rankB;
+    });
+
     channels.forEach((channel) => {
       let li = document.createElement("div");
       li.classList.add("mdl-card__actions", "mdl-card--border");
@@ -48,20 +39,21 @@ function updateChannels(channels) {
         "mdl-js-ripple-effect"
       );
       channelButton.id = channel;
+
       // Set the innerHTML and icon based on the channel name
       if (/live|original/i.test(channel)) {
         channelButton.innerHTML =
-          '<i class="material-icons">record_voice_over</i> <i id="btn_original">Original</i>';
-      } else if (/translation|übersetzung/i.test(channel)) {
+          '<i class="material-icons">record_voice_over</i> <i id=btn_original>Original</i>';
+      } else if (/translation|uebersetzung/i.test(channel)) {
         channelButton.innerHTML =
-          '<i class="material-icons">translate</i> <i id="btn_translation">Translation</i>';
+          '<i class="material-icons">translate</i> <i id=btn_translation>Translation</i>';
       } else {
         channelButton.innerHTML =
-          '<i class="material-icons">music_note</i>' + channel; // Default case if it doesn't match known types
+          '<i class="material-icons">music_note</i> ' + channel;
       }
 
       // Add event listener for the button
-      channelButton.addEventListener("click", function () {
+      channelButton.addEventListener("click", function handleClick() {
         if (this.classList.contains("playing")) {
           if (audio.paused) {
             audio.play();
@@ -69,8 +61,12 @@ function updateChannels(channels) {
             audio.pause();
           }
         } else {
-          this.classList.add("playing");
-          channelClick({ target: { id: channelButton.id } }); // Ensure the correct button ID is passed
+          // #TODO Maybe there is a way to disable the buttons instead of hiding them?
+          document.getElementById("channels").classList.add("hidden");
+          // Switch channel and close connection
+          localStorage.setItem("lab_channel", this.id);
+          document.getElementById("spinner").classList.remove("hidden");
+          closeWS();
         }
       });
 
@@ -139,7 +135,7 @@ ws.onmessage = function (e) {
           let val = { Key: "connect_subscriber", Value: params };
           wsSend(val);
         }
-
+        translate_text();
         break;
       case "ice_candidate":
         pc.addIceCandidate(wsMsg.Value);

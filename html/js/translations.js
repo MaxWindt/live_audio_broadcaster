@@ -36,30 +36,26 @@ function setTranslations(translations) {
   // document.getElementById("subtitle").textContent = translations["subtitle"];
   document.getElementById("unsupported_browser").textContent =
     translations["unsupported_browser"];
-  document.getElementById("channels_header").textContent =
-    translations["channels_header"];
   document.getElementById("channels_description").textContent =
     translations["channels_description"];
   document.getElementById("nochannels").textContent =
     translations["no_channels"];
-  document.getElementById("switch_channel").textContent =
-    translations["switch_channel"];
-  document.getElementById("span_reload").textContent =
-    translations["span_reload"];
-  document.getElementById("btn_translation").textContent =
-    translations["btn_translation"];
-  document.getElementById("btn_original").textContent =
-    translations["btn_original"];
-
   document.getElementById("powered_by").textContent =
     translations["powered_by"];
+  document.getElementById("btn_original").textContent =
+    translations["btn_original"];
+  document.getElementById("btn_translation").textContent =
+    translations["btn_translation"];
+  document.getElementById("span_reload").textContent =
+    translations["span_reload"];
 }
-
-// Check if the language starts with "de" (for German)
-if (navigator.language.startsWith("de")) {
-  setTranslations(translation_de);
+function translate_text() {
+  // Check if the language starts with "de" (for German)
+  if (navigator.language.startsWith("de")) {
+    setTranslations(translation_de);
+  }
+  // // Check if the language starts with "es" (for Spanish)
+  // else if (navigator.language.startsWith("es")) {
+  //   setTranslations(translation_es);
+  // }
 }
-// // Check if the language starts with "es" (for Spanish)
-// else if (navigator.language.startsWith("es")) {
-//   setTranslations(translation_es);
-// }
