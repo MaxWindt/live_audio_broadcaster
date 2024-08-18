@@ -62,10 +62,13 @@ function updateChannels(channels) {
           }
         } else {
           // #TODO Maybe there is a way to disable the buttons instead of hiding them?
-          document.getElementById("channels").classList.add("hidden");
+          // document
+          //   .getElementById("block_buttons_layer")
+          //   .classList.remove("hidden");
+          document.getElementById("play").classList.add("hidden");
+          document.getElementById("spinner").classList.remove("hidden");
           // Switch channel and close connection
           localStorage.setItem("lab_channel", this.id);
-          document.getElementById("spinner").classList.remove("hidden");
           closeWS();
         }
       });
@@ -77,6 +80,8 @@ function updateChannels(channels) {
       channelsEle.appendChild(channelButton);
     });
   }
+
+  translate_text();
 }
 
 function closeWS() {
@@ -126,6 +131,8 @@ ws.onmessage = function (e) {
         break;
       case "session_established": // wait for the message that session_subscriber was received
         document.getElementById("channels").classList.remove("hidden");
+        document.getElementById("play").classList.remove("hidden");
+        document.getElementById("block_buttons_layer").classList.add("hidden");
         document.getElementById("spinner").classList.add("hidden");
         console.log("session_established");
         if (localStorage.getItem("lab_channel") !== null || undefined) {
@@ -135,7 +142,6 @@ ws.onmessage = function (e) {
           let val = { Key: "connect_subscriber", Value: params };
           wsSend(val);
         }
-        translate_text();
         break;
       case "ice_candidate":
         pc.addIceCandidate(wsMsg.Value);
