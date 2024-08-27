@@ -132,7 +132,6 @@ ws.onmessage = function (e) {
         break;
       case "session_established": // wait for the message that session_subscriber was received
         document.getElementById("channels").classList.remove("hidden");
-        document.getElementById("play").classList.remove("hidden");
         document.getElementById("block_buttons_layer").classList.add("hidden");
         document.getElementById("spinner").classList.add("hidden");
         console.log("session_established");
@@ -182,6 +181,7 @@ pc.ontrack = function (event) {
     media_placeholder.innerHTML = "";
     media_placeholder.appendChild(el);
   }
+  document.getElementById("play").classList.remove("hidden");
   audio = document.getElementById("audio");
   // Hard Reload when audio is paused screen is shut off and gets on again. A fresh restart is needed
   document.addEventListener("visibilitychange", function () {

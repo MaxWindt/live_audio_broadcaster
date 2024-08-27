@@ -42,12 +42,22 @@ function setTranslations(translations) {
     translations["no_channels"];
   document.getElementById("powered_by").textContent =
     translations["powered_by"];
-  document.getElementById("btn_original").textContent =
-    translations["btn_original"];
-  document.getElementById("btn_translation").textContent =
-    translations["btn_translation"];
-  document.getElementById("span_reload").textContent =
-    translations["span_reload"];
+  // Check if the original button is available
+  const originalButton = document.getElementById("btn_original");
+  if (originalButton) {
+    originalButton.textContent = translations["btn_original"];
+  }
+
+  // Check if the translation button is available
+  const translationButton = document.getElementById("btn_translation");
+  if (translationButton) {
+    translationButton.textContent = translations["btn_translation"];
+  }
+
+  const reloadButton = document.getElementById("span_reload");
+  if (reloadButton) {
+    reloadButton.textContent = translations["span_reload"];
+  }
 }
 function translate_text() {
   // Check if the language starts with "de" (for German)
