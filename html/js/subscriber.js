@@ -69,7 +69,8 @@ function updateChannels(channels) {
           document.getElementById("spinner").classList.remove("hidden");
           // Switch channel and close connection
           localStorage.setItem("lab_channel", this.id);
-          closeWS();
+          hardReload();
+          // closeWS();
         }
       });
 
