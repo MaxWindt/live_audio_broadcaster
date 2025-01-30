@@ -11,7 +11,7 @@ var translation_de = {
   span_reload: "Neu laden",
   btn_original: "Direkte Übertragung",
   btn_translation: "Übersetzung",
-  powered_by: "Ermöglicht durch Babelcast",
+  powered_by: "Ermöglicht durch",
 };
 
 var translation_es = {
@@ -27,7 +27,7 @@ var translation_es = {
   span_reload: "recargar",
   btn_translation: "traducción",
   btn_original: "original",
-  powered_by: "Proporcionado por Babelcast",
+  powered_by: "Proporcionado por",
 };
 
 // Function to set translations based on language
