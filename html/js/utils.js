@@ -1,3 +1,4 @@
+//// Translation
 var translation_de = {
   title: "Live-Audio-Stream",
   // subtitle: "Live-Audio-Stream",
@@ -69,3 +70,65 @@ function translate_text() {
   //   setTranslations(translation_es);
   // }
 }
+//// Team Members
+function createGalleryItems() {
+  const galleryDiv = document.querySelector(".gallery");
+  galleryDiv.innerHTML = teamMembers
+    .sort(() => Math.random() - 0.5)
+    .map(
+      (member, index) => `
+        <div class="gallery-item">
+            <img data-src="https://picsum.photos/200/200?random=${index + 1}" 
+                 src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+                 alt="${member.name}" />
+            <div class="gallery-text">
+                <div class="name">${member.name}</div>
+                <div class="title">${member.title}</div>
+            </div>
+        </div>
+    `
+    )
+    .join("");
+}
+
+function loadGalleryImages() {
+  const images = document.querySelectorAll(".gallery-item img");
+  images.forEach((img) => {
+    if (img.dataset.src) {
+      img.src = img.dataset.src;
+      img.removeAttribute("data-src");
+    }
+  });
+}
+
+function openGallery() {
+  document.getElementById("galleryModal").style.display = "block";
+  document.body.style.overflow = "hidden";
+  loadGalleryImages();
+}
+
+function closeGallery() {
+  document.getElementById("galleryModal").style.display = "none";
+  document.body.style.overflow = "auto";
+}
+
+// Event Listeners
+document.addEventListener("DOMContentLoaded", () => {
+  createGalleryItems();
+
+  window.onclick = function (event) {
+    if (event.target == document.getElementById("galleryModal")) {
+      closeGallery();
+    }
+  };
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      closeGallery();
+    }
+  });
+});
+
+// Make functions available globally
+window.openGallery = openGallery;
+window.closeGallery = closeGallery;

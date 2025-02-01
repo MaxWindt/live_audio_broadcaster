@@ -13,11 +13,28 @@
   </head>
 
   <body class="default">
-    <div
-      class="mdl-button mdl-js-button mdl-button--icon theme-button mdl-button--icon noselect"
-      id="themeButton"
-    >
-      <i class="material-icons">palette</i>
+    <div id="galleryModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeGallery()">&times;</span>
+        <div class="gallery">
+          <!-- Gallery items will be dynamically inserted here -->
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-buttons">
+      <button
+        class="team-button mdl-button mdl-js-button mdl-button--icon mdl-button--icon noselect"
+        onclick="openGallery()"
+      >
+        <i class="material-icons">interpreter_mode</i>
+      </button>
+      <button
+        class="theme-button mdl-button mdl-js-button mdl-button--icon mdl-button--icon noselect"
+        id="themeButton"
+      >
+        <i class="material-icons">palette</i>
+      </button>
     </div>
     <!-- Wide card with share menu button -->
 
@@ -68,7 +85,7 @@
       <div id="footer">
         <p
           style="
-            position: absolute;
+            position: relative;
             bottom: 0;
             left: 50%;
             transform: translateX(-50%);
@@ -81,7 +98,13 @@
       </div>
     </div>
     <div id="block_buttons_layer" class="hidden"></div>
+
+    <script src="js/common.js"></script>
+    <script src="js/subscriber.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="teamData.js"></script>
     <script>
+      translate_text();
       const themeButton = document.getElementById("themeButton");
       const themes = ["white", "default", "dark", "blue", "green"];
 
@@ -95,12 +118,6 @@
         document.body.className = themes[currentTheme];
         localStorage.setItem("lab_page_theme", currentTheme); // Save the selected theme
       });
-    </script>
-    <script src="js/common.js"></script>
-    <script src="js/subscriber.js"></script>
-    <script src="js/translations.js"></script>
-    <script>
-      translate_text();
     </script>
   </body>
 </html>
