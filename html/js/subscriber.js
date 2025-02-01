@@ -205,9 +205,17 @@ pc.ontrack = function (event) {
     closeWS();
   };
 
-  // updating current time display #TODO This needs to be rounded and put in minute/hour form
+  // updating current time display
+  let currentTime = null;
   audio.ontimeupdate = function () {
-    console.log(audio.currentTime);
+    let lastTime = currentTime;
+    currentTime = Math.floor(audio.currentTime);
+    if (currentTime !== lastTime) {
+      let hours = Math.floor(currentTime / 3600);
+      let minutes = Math.floor((currentTime % 3600) / 60);
+      let seconds = currentTime % 60;
+      console.log(`${hours}:${minutes}:${seconds}`);
+    }
   };
 
   // Get the existing play/pause button
