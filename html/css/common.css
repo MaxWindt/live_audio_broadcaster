@@ -49,6 +49,9 @@ body {
 }
 
 h1 {
+  @media (max-width: 400px) {
+    margin-top: 50px;
+  }
   font-size: 2em;
   margin-bottom: 20px;
 }
