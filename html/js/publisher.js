@@ -168,7 +168,12 @@ ws.onclose = function () {
 //
 
 const constraints = (window.constraints = {
-  audio: true,
+  audio: {
+    channels: 2,
+    autoGainControl: false,
+    echoCancellation: false,
+    noiseSuppression: false,
+  },
   video: false,
 });
 
