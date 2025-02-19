@@ -230,7 +230,7 @@ navigator.mediaDevices
         signalMeter.value = val;
 
         // Check for silence
-        if (val < 0.03) {
+        if (val < 0.03 && recording) {
           if (!silenceStart) {
             silenceStart = Date.now();
           } else if (
