@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 )
@@ -33,6 +34,40 @@ const httpTimeout = 15 * time.Second
 var publisherPassword = ""
 
 var reg *Registry
+
+// startPeriodicCleanup starts a goroutine to perform regular cleanup of resources
+func startPeriodicCleanup(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Minute)
+	defer ticker.Stop()
+
+	log.Println("Starting periodic resource cleanup service")
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Println("Stopping periodic cleanup service")
+				return
+			case <-ticker.C:
+				log.Println("Running periodic resource cleanup")
+
+				// Clean up stale channels
+				cleaned := reg.ForceCleanupStaleChannels()
+				if cleaned > 0 {
+					log.Printf("Cleaned up %d stale channels", cleaned)
+				}
+
+				// Run garbage collection to free up memory
+				runtime.GC()
+
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
+				log.Printf("Memory stats after cleanup: Alloc=%v MiB, TotalAlloc=%v MiB, Sys=%v MiB",
+					m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024)
+			}
+		}
+	}()
+}
 
 func main() {
 	webRoot := flag.String("webRoot", "html", "web root directory")
@@ -66,10 +101,15 @@ func main() {
 
 	reg = NewRegistry()
 
+	// Start the periodic cleanup service
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+	startPeriodicCleanup(cleanupCtx)
+
 	go func() {
 		err := srv.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			log.Println("Error starting server")
+			log.Println("Error starting server:", err)
 		}
 	}()
 

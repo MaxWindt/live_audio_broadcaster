@@ -118,7 +118,6 @@ func (c *Conn) setupSessionSubscriber(ctx context.Context) error {
 }
 
 func (c *Conn) connectPublisher(ctx context.Context, cmd CmdConnect) error {
-
 	if c.peer.pc == nil {
 		return fmt.Errorf("webrtc session not established")
 	}
@@ -135,14 +134,29 @@ func (c *Conn) connectPublisher(ctx context.Context, cmd CmdConnect) error {
 		return fmt.Errorf("incorrect password")
 	}
 
+	// First verify the channel is available or cleanup any stale state
+	if err := reg.VerifyChannelAvailable(cmd.Channel); err != nil {
+		return err
+	}
+
 	c.Lock()
 	c.channelName = cmd.Channel
 	c.Unlock()
 	c.Log("setting up publisher for channel '%s'\n", c.channelName)
 
-	localTrack := <-c.peer.localTrackChan
-	c.Log("publisher has localTrack\n")
+	// Wait for the local track with a timeout
+	var localTrack *webrtc.TrackLocalStaticRTP
+	select {
+	case localTrack = <-c.peer.localTrackChan:
+		c.Log("publisher has localTrack\n")
+	case <-time.After(5 * time.Second):
+		return fmt.Errorf("timeout waiting for local track")
+	}
 
+	// If we're reconnecting to an existing channel, make sure it's cleaned up first
+	reg.CleanupChannel(c.channelName)
+
+	// Now add the publisher with the new track
 	if err := reg.AddPublisher(c.channelName, localTrack); err != nil {
 		return err
 	}
@@ -174,15 +188,61 @@ func (c *Conn) Close() {
 	if c.hasClosed {
 		return
 	}
+
+	// Log the close operation more verbosely
+	connectionType := "unknown"
+	if c.channelName != "" {
+		connectionType = "publisher for channel '" + c.channelName + "'"
+	} else {
+		connectionType = "subscriber or uninitialized connection"
+	}
+	c.Log("Closing %s connection\n", connectionType)
+
+	// Clean up the channel properly if this is a publisher
+	if c.channelName != "" {
+		// If this is a publisher connection, make sure to properly clean up the channel
+		if c.peer != nil && c.peer.pc != nil {
+			// Check the current connection state to log details
+			iceState := c.peer.pc.ICEConnectionState()
+			c.Log("Connection state at close: %s\n", iceState)
+		}
+
+		// If we're a publisher, do a full cleanup of the channel
+		// Note: RemovePublisher just decrements the count, we need more thorough cleanup
+		reg.RemovePublisher(c.channelName)
+
+		// For publishers that didn't exit cleanly, force cleanup the channel
+		// This helps prevent "zombie" channels
+		if c.peer != nil && c.peer.pc != nil {
+			state := c.peer.pc.ICEConnectionState()
+			if state != webrtc.ICEConnectionStateClosed &&
+				state != webrtc.ICEConnectionStateDisconnected {
+				c.Log("Publisher closing in non-disconnected state (%s), forcing channel cleanup\n", state)
+				reg.CleanupChannel(c.channelName)
+			}
+		}
+	}
+
 	if c.trackQuitChan != nil {
 		close(c.trackQuitChan)
 	}
+
+	// Close the peer connection
 	if c.peer.pc != nil {
-		c.peer.pc.Close()
+		err := c.peer.pc.Close()
+		if err != nil {
+			c.Log("Error closing peer connection: %v\n", err)
+		}
 	}
+
+	// Close the websocket connection
 	if c.wsConn != nil {
-		c.wsConn.Close()
+		err := c.wsConn.Close()
+		if err != nil {
+			c.Log("Error closing websocket: %v\n", err)
+		}
 	}
+
 	c.hasClosed = true
 }
 
@@ -209,10 +269,15 @@ func (c *Conn) rtcTrackHandlerPublisher(remoteTrack *webrtc.TrackRemote, receive
 	go func() {
 		ticker := time.NewTicker(rtcpPLIInterval)
 		for range ticker.C {
-			err := c.peer.pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}})
-			if err != nil {
-				fmt.Printf("WriteRTCP err '%s'\n", err)
+			select {
+			case <-c.trackQuitChan:
 				return
+			default:
+				err := c.peer.pc.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(remoteTrack.SSRC())}})
+				if err != nil {
+					fmt.Printf("WriteRTCP err '%s'\n", err)
+					return
+				}
 			}
 		}
 	}()
@@ -228,19 +293,24 @@ func (c *Conn) rtcTrackHandlerPublisher(remoteTrack *webrtc.TrackRemote, receive
 
 	rtpBuf := make([]byte, 1400)
 	for {
-		i, _, readErr := remoteTrack.Read(rtpBuf)
-		if readErr != nil {
-			fmt.Printf("remoteTrack.Read err '%s'\n", readErr)
+		select {
+		case <-c.trackQuitChan:
 			return
-		}
-		//		fmt.Printf("remoteTrack.Read len %d bytes\n", i)
-
-		// ErrClosedPipe means we don't have any subscribers, this is ok if no peers have connected yet
-		_, err := localTrack.Write(rtpBuf[:i])
-		if err != nil {
-			fmt.Printf("localTrack.write err '%s'\n", err)
-			if !errors.Is(err, io.ErrClosedPipe) {
+		default:
+			i, _, readErr := remoteTrack.Read(rtpBuf)
+			if readErr != nil {
+				fmt.Printf("remoteTrack.Read err '%s'\n", readErr)
 				return
+			}
+			//		fmt.Printf("remoteTrack.Read len %d bytes\n", i)
+
+			// ErrClosedPipe means we don't have any subscribers, this is ok if no peers have connected yet
+			_, err := localTrack.Write(rtpBuf[:i])
+			if err != nil {
+				fmt.Printf("localTrack.write err '%s'\n", err)
+				if !errors.Is(err, io.ErrClosedPipe) {
+					return
+				}
 			}
 		}
 	}
@@ -265,6 +335,16 @@ func (c *Conn) rtcStateChangeHandler(connectionState webrtc.ICEConnectionState) 
 		// non blocking channel write, as receiving goroutine may already have quit
 		select {
 		case c.infoChan <- "ice disconnected":
+		default:
+		}
+	case webrtc.ICEConnectionStateFailed:
+		c.Log("ice connection failed\n")
+		// This is important - if the ICE connection fails, we need to handle it
+		c.Close()
+
+		// Try to notify the client
+		select {
+		case c.infoChan <- "ice connection failed":
 		default:
 		}
 	}
