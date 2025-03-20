@@ -9,6 +9,7 @@ var connectionLostTime = null;
 var channelName = "";
 var channelPassword = "";
 var wasRecording = false;
+var micEnabled = true;
 
 // Add a debug function
 var debug = function (...args) {
@@ -16,6 +17,18 @@ var debug = function (...args) {
 };
 
 document.getElementById("reload").addEventListener("click", function () {
+  // Store current settings before reload
+  const currentSettings = {
+    channel: channelName,
+    password: channelPassword,
+    micEnabled: audioTrack ? audioTrack.enabled : false,
+    wasRecording: recording,
+  };
+
+  // Store settings in localStorage for persistence
+  localStorage.setItem("babelcast_settings", JSON.stringify(currentSettings));
+
+  // Reload the page
   window.location.reload(false);
 });
 
@@ -33,6 +46,7 @@ var toggleMic = function () {
   micEle.classList.toggle("icon-mic");
   micEle.classList.toggle("on");
   audioTrack.enabled = micEle.classList.contains("icon-mic");
+  micEnabled = audioTrack.enabled;
 };
 
 var toggleRecording = function () {
@@ -123,24 +137,74 @@ var sendBlob = function (blob) {
   }, 0);
 };
 
-document.getElementById("input-form").addEventListener("submit", function (e) {
-  e.preventDefault();
+// Function to connect to a channel
+var connectToChannel = function (channel, password) {
+  if (!channel) return;
 
   document.getElementById("output").classList.remove("hidden");
   document.getElementById("input-form").classList.add("hidden");
-  let params = {};
 
   // Store these for potential reconnection
-  channelName = document.getElementById("channel").value;
-  channelPassword = document.getElementById("password").value;
+  channelName = channel;
+  channelPassword = password || "";
 
-  params.Channel = channelName;
-  params.Password = channelPassword;
+  let params = {
+    Channel: channelName,
+    Password: channelPassword,
+  };
+
   let val = { Key: "connect_publisher", Value: params };
   wsSend(val);
   document.getElementById("subtitle").innerText = params.Channel;
-  console.log(params.Channel);
+  console.log(`Connected to channel: ${params.Channel}`);
+};
+
+document.getElementById("input-form").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  // Get values from form
+  channelName = document.getElementById("channel").value;
+  channelPassword = document.getElementById("password").value;
+
+  connectToChannel(channelName, channelPassword);
 });
+
+// Function to restore settings after page reload or reconnection
+var restoreSettings = function () {
+  const savedSettings = localStorage.getItem("babelcast_settings");
+  if (savedSettings) {
+    try {
+      const settings = JSON.parse(savedSettings);
+
+      // Pre-fill form fields if we're still on the form
+      if (
+        document.getElementById("input-form").classList.contains("hidden") ===
+        false
+      ) {
+        if (settings.channel) {
+          document.getElementById("channel").value = settings.channel;
+        }
+        if (settings.password) {
+          document.getElementById("password").value = settings.password;
+        }
+      }
+
+      // Remember these for when the connection is established
+      channelName = settings.channel || "";
+      channelPassword = settings.password || "";
+      wasRecording = settings.wasRecording || false;
+      micEnabled = settings.micEnabled || true;
+
+      // Clear the settings to prevent unexpected auto-connections on manual page refreshes
+      localStorage.removeItem("babelcast_settings");
+
+      return settings;
+    } catch (error) {
+      debug("Error restoring settings:", error);
+    }
+  }
+  return null;
+};
 
 ws.onmessage = function (e) {
   let wsMsg = JSON.parse(e.data);
@@ -154,7 +218,7 @@ ws.onmessage = function (e) {
       case "error":
         error("server error", wsMsg.Value);
         document.getElementById("output").classList.add("hidden");
-        document.getElementById("input-form").classList.add("hidden");
+        document.getElementById("input-form").classList.remove("hidden");
         break;
       case "sd_answer":
         startSession(wsMsg.Value);
@@ -242,9 +306,23 @@ function attemptReconnect() {
               cb.classList.remove("hidden");
             }
 
+            // If we have channel info, connect again
+            if (channelName) {
+              connectToChannel(channelName, channelPassword);
+            }
+
             // If we were recording before, restart recording
             if (wasRecording && mediaRecorder && !recording) {
               setTimeout(startRecording, 1000);
+            }
+
+            // Restore microphone state
+            if (audioTrack && micEnabled) {
+              audioTrack.enabled = true;
+              let micEle = document.getElementById("microphone");
+              micEle.classList.remove("icon-mute");
+              micEle.classList.add("icon-mic");
+              micEle.classList.add("on");
             }
             break;
           default:
@@ -266,8 +344,9 @@ function attemptReconnect() {
         .then((stream) => {
           audioTrack = stream.getAudioTracks()[0];
           stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-          // mute until we're ready
-          audioTrack.enabled = false;
+
+          // Set mic state based on previous state
+          audioTrack.enabled = micEnabled;
 
           const soundMeter = new SoundMeter(window.audioContext);
           soundMeter.connectToSource(stream, function (e) {
@@ -333,21 +412,6 @@ function attemptReconnect() {
         })
         .catch((error) => debug("getUserMedia error:", error));
 
-      // Reconnect to the same channel
-      if (channelName) {
-        // We need to wait for the WebRTC setup to complete first
-        // So we set a timeout to connect as publisher after a delay
-        setTimeout(function () {
-          let params = {
-            Channel: channelName,
-            Password: channelPassword,
-          };
-          let val = { Key: "connect_publisher", Value: params };
-          wsSend(val);
-          debug("Reconnected to channel:", channelName);
-        }, 2000);
-      }
-
       // Update message handlers
       ws.onmessage = function (e) {
         let wsMsg = JSON.parse(e.data);
@@ -361,7 +425,7 @@ function attemptReconnect() {
             case "error":
               error("server error", wsMsg.Value);
               document.getElementById("output").classList.add("hidden");
-              document.getElementById("input-form").classList.add("hidden");
+              document.getElementById("input-form").classList.remove("hidden");
               break;
             case "sd_answer":
               startSession(wsMsg.Value);
@@ -424,8 +488,25 @@ navigator.mediaDevices
   .then((stream) => {
     audioTrack = stream.getAudioTracks()[0];
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-    // mute until we're ready
-    audioTrack.enabled = false;
+
+    // Restore settings if available
+    const settings = restoreSettings();
+
+    // Set initial mic state
+    if (settings && typeof settings.micEnabled !== "undefined") {
+      audioTrack.enabled = settings.micEnabled;
+      if (settings.micEnabled) {
+        let micEle = document.getElementById("microphone");
+        micEle.classList.remove("icon-mute");
+        micEle.classList.add("icon-mic");
+        micEle.classList.add("on");
+      }
+    } else {
+      // Default is muted
+      audioTrack.enabled = true;
+    }
+
+    micEnabled = audioTrack.enabled;
 
     const soundMeter = new SoundMeter(window.audioContext);
     soundMeter.connectToSource(stream, function (e) {
@@ -446,6 +527,12 @@ navigator.mediaDevices
         mediaRecorder.onerror = (event) => debug("MediaRecorder error:", event);
 
         debug("MediaRecorder event handlers set up");
+
+        // If we have restored settings and we should be recording, start recording
+        if (settings && settings.wasRecording) {
+          // Delay starting recording to ensure everything is ready
+          setTimeout(startRecording, 1000);
+        }
       } catch (error) {
         debug("Error setting up MediaRecorder:", error);
       }
@@ -487,6 +574,39 @@ navigator.mediaDevices
         wsSend(val);
       })
       .catch(debug);
+
+    // Auto-connect to channel if we have settings
+    if (settings && settings.channel) {
+      // First wait for connection to be established
+      const checkConnectionState = setInterval(() => {
+        if (
+          pc.iceConnectionState === "connected" ||
+          pc.iceConnectionState === "completed"
+        ) {
+          clearInterval(checkConnectionState);
+
+          // Auto-fill form and submit if needed
+          if (
+            document
+              .getElementById("input-form")
+              .classList.contains("hidden") === false
+          ) {
+            document.getElementById("channel").value = settings.channel;
+            if (settings.password) {
+              document.getElementById("password").value = settings.password;
+            }
+
+            // Connect to the channel
+            connectToChannel(settings.channel, settings.password);
+          }
+        }
+      }, 500);
+
+      // Set a timeout to clear the interval after 10 seconds if connection isn't established
+      setTimeout(() => {
+        clearInterval(checkConnectionState);
+      }, 10000);
+    }
   })
   .catch((error) => debug("getUserMedia error:", error));
 
@@ -494,5 +614,30 @@ pc.onicecandidate = (e) => {
   if (e.candidate && e.candidate.candidate !== "") {
     let val = { Key: "ice_candidate", Value: e.candidate };
     wsSend(val);
+  }
+};
+
+pc.oniceconnectionstatechange = (e) => {
+  debug("ICE state:", pc.iceConnectionState);
+  switch (pc.iceConnectionState) {
+    case "new":
+    case "checking":
+    case "failed":
+      console.log("ICE state:", pc.iceConnectionState);
+    case "disconnected":
+      console.log("ICE state:", pc.iceConnectionState);
+    case "closed":
+      break;
+    case "connected":
+    case "completed":
+      document.getElementById("spinner").classList.add("hidden");
+      let cb = document.getElementById("connect-button");
+      if (cb) {
+        cb.classList.remove("hidden");
+      }
+      break;
+    default:
+      debug("ice state unknown", e);
+      break;
   }
 };
