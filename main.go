@@ -37,7 +37,7 @@ var reg *Registry
 
 // startPeriodicCleanup starts a goroutine to perform regular cleanup of resources
 func startPeriodicCleanup(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Minute)
+	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
 	log.Println("Starting periodic resource cleanup service")

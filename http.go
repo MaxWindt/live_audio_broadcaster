@@ -30,8 +30,10 @@ const PingInterval = 10 * time.Second
 const WriteWait = 10 * time.Second
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:   1024,
+	WriteBufferSize:  1024,
+	CheckOrigin:      func(r *http.Request) bool { return true },
+	HandshakeTimeout: 10 * time.Second,
 }
 
 type wsMsg struct {
@@ -51,6 +53,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
+
+	gconn.SetReadDeadline(time.Now().Add(PingInterval + WriteWait))
+	gconn.SetPongHandler(func(string) error {
+		gconn.SetReadDeadline(time.Now().Add(PingInterval + WriteWait))
+		return nil
+	})
 
 	clientAddress := gconn.RemoteAddr().String()
 	xFwdIP := r.Header.Get("X-Forwarded-For")

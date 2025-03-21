@@ -189,7 +189,6 @@ func (c *Conn) Close() {
 		return
 	}
 
-	// Log the close operation more verbosely
 	connectionType := "unknown"
 	if c.channelName != "" {
 		connectionType = "publisher for channel '" + c.channelName + "'"
@@ -198,28 +197,15 @@ func (c *Conn) Close() {
 	}
 	c.Log("Closing %s connection\n", connectionType)
 
-	// Clean up the channel properly if this is a publisher
-	if c.channelName != "" {
-		// If this is a publisher connection, make sure to properly clean up the channel
-		if c.peer != nil && c.peer.pc != nil {
-			// Check the current connection state to log details
-			iceState := c.peer.pc.ICEConnectionState()
-			c.Log("Connection state at close: %s\n", iceState)
-		}
+	if c.channelName != "" && c.peer != nil && c.peer.pc != nil {
+		iceState := c.peer.pc.ICEConnectionState()
+		c.Log("Connection state at close: %s\n", iceState)
 
-		// If we're a publisher, do a full cleanup of the channel
-		// Note: RemovePublisher just decrements the count, we need more thorough cleanup
-		reg.RemovePublisher(c.channelName)
-
-		// For publishers that didn't exit cleanly, force cleanup the channel
-		// This helps prevent "zombie" channels
-		if c.peer != nil && c.peer.pc != nil {
-			state := c.peer.pc.ICEConnectionState()
-			if state != webrtc.ICEConnectionStateClosed &&
-				state != webrtc.ICEConnectionStateDisconnected {
-				c.Log("Publisher closing in non-disconnected state (%s), forcing channel cleanup\n", state)
-				reg.CleanupChannel(c.channelName)
-			}
+		if iceState != webrtc.ICEConnectionStateClosed {
+			c.Log("Publisher closing, forcing channel cleanup\n")
+			reg.CleanupChannel(c.channelName)
+		} else {
+			reg.RemovePublisher(c.channelName)
 		}
 	}
 
@@ -318,8 +304,7 @@ func (c *Conn) rtcTrackHandlerPublisher(remoteTrack *webrtc.TrackRemote, receive
 
 // WebRTC callback function
 func (c *Conn) rtcStateChangeHandler(connectionState webrtc.ICEConnectionState) {
-
-	//var err error
+	var disconnectTimer *time.Timer
 
 	switch connectionState {
 	case webrtc.ICEConnectionStateConnected:
@@ -328,29 +313,39 @@ func (c *Conn) rtcStateChangeHandler(connectionState webrtc.ICEConnectionState) 
 		c.Log("local SDP\n%s\n", c.peer.pc.LocalDescription().SDP)
 		c.infoChan <- "ice connected"
 
+		if disconnectTimer != nil {
+			disconnectTimer.Stop()
+			disconnectTimer = nil
+		}
+
 	case webrtc.ICEConnectionStateDisconnected:
 		c.Log("ice disconnected\n")
-		c.Close()
 
-		// non blocking channel write, as receiving goroutine may already have quit
+		disconnectTimer = time.AfterFunc(10*time.Second, func() {
+			c.Log("ice disconnected timeout, closing connection\n")
+			c.Close()
+		})
+
 		select {
 		case c.infoChan <- "ice disconnected":
 		default:
 		}
+
 	case webrtc.ICEConnectionStateFailed:
 		c.Log("ice connection failed\n")
-		// This is important - if the ICE connection fails, we need to handle it
 		c.Close()
 
-		// Try to notify the client
 		select {
 		case c.infoChan <- "ice connection failed":
 		default:
 		}
+
+	case webrtc.ICEConnectionStateClosed:
+		c.Log("ice connection closed\n")
+		c.Close()
 	}
 }
 
-// WebRTC callback function
 func (c *Conn) onIceCandidate(candidate *webrtc.ICECandidate) {
 	if candidate == nil {
 		return
@@ -405,18 +400,32 @@ func (c *Conn) LogHandler(ctx context.Context) {
 func (c *Conn) PingHandler(ctx context.Context) {
 	defer c.Log("ws ping goroutine quitting...\n")
 	pingCh := time.Tick(PingInterval)
+	missedPings := 0
+	const maxMissedPings = 3
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-pingCh:
 			c.Lock()
-			// WriteControl can be called concurrently
 			err := c.wsConn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(WriteWait))
 			if err != nil {
+				missedPings++
+				c.Log("ping client failed, consecutive misses: %d, err: %s\n", missedPings, err)
 				c.Unlock()
-				c.Log("ping client, err %s\n", err)
-				return
+
+				if missedPings >= maxMissedPings {
+					c.Log("too many missed pings, closing connection\n")
+					c.Close()
+					return
+				}
+				continue
+			}
+
+			if missedPings > 0 {
+				missedPings = 0
+				c.Log("ping success after previous misses\n")
 			}
 			c.Unlock()
 		}

@@ -173,7 +173,8 @@ func (r *Registry) ForceCleanupStaleChannels() int {
 	cleaned := 0
 	for name, channel := range r.Channels {
 		// Check for potential stale channels
-		if channel.PublisherCount > 0 && !channel.Active {
+		if (channel.PublisherCount > 0 && !channel.Active) ||
+			(channel.PublisherCount == 0 && channel.SubscriberCount == 0) {
 			log.Printf("Found stale channel '%s' during cleanup", name)
 
 			// Reset the channel
@@ -182,8 +183,29 @@ func (r *Registry) ForceCleanupStaleChannels() int {
 			channel.LocalTrack = nil
 
 			cleaned++
+
+			if channel.SubscriberCount <= 0 {
+				delete(r.Channels, name)
+				log.Printf("Removed stale channel '%s' from registry", name)
+			}
 		}
 	}
 
 	return cleaned
+}
+
+func (r *Registry) CleanupChannel(channelName string) {
+	r.Lock()
+	defer r.Unlock()
+
+	if channel, exists := r.Channels[channelName]; exists {
+		channel.PublisherCount = 0
+		channel.Active = false
+		channel.LocalTrack = nil
+
+		if channel.SubscriberCount <= 0 {
+			delete(r.Channels, channelName)
+			log.Printf("Removed channel '%s' from registry during cleanup", channelName)
+		}
+	}
 }
