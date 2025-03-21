@@ -192,7 +192,7 @@ navigator.mediaDevices
     audioTrack = stream.getAudioTracks()[0];
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     // mute until we're ready
-    audioTrack.enabled = false;
+    audioTrack.enabled = true;
 
     const soundMeter = new SoundMeter(window.audioContext);
     soundMeter.connectToSource(stream, function (e) {
