@@ -7,14 +7,25 @@
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/audiobroadcaster</string>
+        <string>-port</string>
+        <string>8080</string>
     </array>
+    <key>WorkingDirectory</key>
+    <string>/usr/local/var/audiobroadcaster</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>StandardErrorPath</key>
+    <string>/usr/local/var/log/audiobroadcaster/error.log</string>
+    <key>StandardOutPath</key>
+    <string>/usr/local/var/log/audiobroadcaster/output.log</string>
     <key>KeepAlive</key>
     <true/>
     <key>RunAtLoad</key>
     <true/>
-    <key>StandardErrorPath</key>
-    <string>/usr/local/var/log/audiobroadcaster.err</string>
-    <key>StandardOutPath</key>
-    <string>/usr/local/var/log/audiobroadcaster.log</string>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
 </dict>
 </plist>
