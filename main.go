@@ -20,7 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -30,14 +30,24 @@ import (
 
 const httpTimeout = 15 * time.Second
 
-var publisherPassword = ""
+var (
+	publisherPassword = ""
 
-var reg *Registry
+	reg *Registry
+)
 
 func main() {
-	webRoot := flag.String("webRoot", "html", "web root directory")
 	port := flag.Int("port", 80, "listen on this port")
+	debug := flag.Bool("debug", false, "enable debug log")
 	flag.Parse()
+
+	var programLevel = new(slog.LevelVar) // Info by default
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: programLevel}))
+	slog.SetDefault(logger)
+
+	if *debug {
+		programLevel.Set(slog.LevelDebug)
+	}
 
 	/*
 		file, _ := os.Create("./cpu.pprof")
@@ -45,18 +55,17 @@ func main() {
 		defer pprof.StopCPUProfile()
 	*/
 
-	log.Printf("Starting server...\n")
-	log.Printf("Set web root: %s\n", *webRoot)
+	slog.Info("starting server")
 
 	publisherPassword = os.Getenv("PUBLISHER_PASSWORD")
 	if publisherPassword != "" {
-		log.Printf("Publisher password set\n")
+		slog.Info("publisher password set")
 	}
 
 	http.HandleFunc("/ws", wsHandler)
-	http.Handle("/", http.FileServer(http.Dir(http.Dir(*webRoot))))
+	http.Handle("/", http.FileServer(http.FS(embedContentHtml)))
 
-	log.Printf("Listening on port :%d\n", *port)
+	slog.Info("listening on port", "port", *port)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", *port),
@@ -69,7 +78,7 @@ func main() {
 	go func() {
 		err := srv.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			log.Println("Error starting server")
+			slog.Error("error starting server", "err", err)
 		}
 	}()
 
@@ -80,12 +89,13 @@ func main() {
 
 	// block until a signal is received
 	sig := <-sigChan
-	log.Printf("Got signal: %v\n", sig)
-	log.Println("Shutting down")
+	slog.Info("got signal", "sig", sig)
+	slog.Info("shutting down")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Graceful shutdown failed %q\n", err)
+		slog.Error("graceful shutdown failed", "err", err)
+		os.Exit(1)
 	}
 }
