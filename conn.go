@@ -75,9 +75,13 @@ func (c *Conn) Log(format string, v ...interface{}) {
 }
 
 func (c *Conn) setupSessionPublisher(ctx context.Context, offer webrtc.SessionDescription) error {
+	// Add connection monitoring
+	connID := hash(c.wsConn.RemoteAddr().String())
+	monitor.AddConnection(fmt.Sprintf("%x", connID), "", true)
 
 	answer, err := c.peer.SetupPublisher(offer, c.rtcStateChangeHandler, c.rtcTrackHandlerPublisher, c.onIceCandidate)
 	if err != nil {
+		monitor.RemoveConnection(fmt.Sprintf("%x", connID))
 		return err
 	}
 
@@ -174,14 +178,28 @@ func (c *Conn) Close() {
 	if c.hasClosed {
 		return
 	}
+
+	// Cleanup monitoring
+	connID := fmt.Sprintf("%x", hash(c.wsConn.RemoteAddr().String()))
+	monitor.RemoveConnection(connID)
+
 	if c.trackQuitChan != nil {
 		close(c.trackQuitChan)
 	}
 	if c.peer.pc != nil {
+		// Ensure proper WebRTC cleanup
+		for _, sender := range c.peer.pc.GetSenders() {
+			if err := sender.Stop(); err != nil {
+				c.Log("Error stopping sender: %v", err)
+			}
+		}
 		c.peer.pc.Close()
 	}
 	if c.wsConn != nil {
 		c.wsConn.Close()
+	}
+	if c.channelName != "" {
+		reg.RemovePublisher(c.channelName)
 	}
 	c.hasClosed = true
 }
@@ -248,8 +266,8 @@ func (c *Conn) rtcTrackHandlerPublisher(remoteTrack *webrtc.TrackRemote, receive
 
 // WebRTC callback function
 func (c *Conn) rtcStateChangeHandler(connectionState webrtc.ICEConnectionState) {
-
-	//var err error
+	connID := fmt.Sprintf("%x", hash(c.wsConn.RemoteAddr().String()))
+	monitor.UpdateState(connID, connectionState.String())
 
 	switch connectionState {
 	case webrtc.ICEConnectionStateConnected:
@@ -258,13 +276,15 @@ func (c *Conn) rtcStateChangeHandler(connectionState webrtc.ICEConnectionState) 
 		c.Log("local SDP\n%s\n", c.peer.pc.LocalDescription().SDP)
 		c.infoChan <- "ice connected"
 
-	case webrtc.ICEConnectionStateDisconnected:
-		c.Log("ice disconnected\n")
+	case webrtc.ICEConnectionStateDisconnected,
+		webrtc.ICEConnectionStateFailed,
+		webrtc.ICEConnectionStateClosed:
+		c.Log("ice connection state: %s\n", connectionState.String())
 		c.Close()
 
 		// non blocking channel write, as receiving goroutine may already have quit
 		select {
-		case c.infoChan <- "ice disconnected":
+		case c.infoChan <- fmt.Sprintf("ice %s", connectionState.String()):
 		default:
 		}
 	}
@@ -341,6 +361,39 @@ func (c *Conn) PingHandler(ctx context.Context) {
 			c.Unlock()
 		}
 	}
+}
+
+// Add network state detection
+func (c *Conn) watchNetworkState(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if c.peer.pc != nil {
+				stats := c.peer.pc.GetStats()
+				if stats != nil {
+					// Check for network issues in stats
+					if hasNetworkIssues(stats) {
+						c.Log("Network issues detected, initiating recovery...")
+						c.initiateRecovery()
+					}
+				}
+			}
+		}
+	}
+}
+
+func hasNetworkIssues(stats webrtc.StatsReport) bool {
+	// Implement network health check logic
+	return false
+}
+
+func (c *Conn) initiateRecovery() {
+	// Implement recovery logic
 }
 
 func hash(s string) uint32 {
