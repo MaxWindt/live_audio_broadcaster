@@ -169,7 +169,7 @@ ws.onclose = function () {
 
 const constraints = (window.constraints = {
   audio: {
-    channels: 2,
+    channels: 1,
     autoGainControl: false,
     echoCancellation: false,
     noiseSuppression: false,
