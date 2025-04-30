@@ -15,9 +15,11 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
+	"errors"
+	"io"
+	"log/slog"
 
-	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 )
 
 type WebRTCPeer struct {
@@ -93,7 +95,9 @@ func (wp *WebRTCPeer) SetupSubscriber(channel *Channel, onStateChange func(conne
 		for {
 			_, _, rtcpErr := rtpSender.Read(rtcpBuf)
 			if rtcpErr != nil {
-				fmt.Printf("rtpSender.Read err '%s'\n", rtcpErr)
+				if !errors.Is(rtcpErr, io.EOF) {
+					slog.Error("rtpSender.Read error", "err", rtcpErr)
+				}
 				return
 			}
 		}

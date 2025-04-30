@@ -6,7 +6,7 @@
 
     <title>Babelcast Publisher</title>
 
-    <link href="css/old_style.css" rel="stylesheet" />
+    <link href="css/common.css" rel="stylesheet" />
     <link href="fontello/css/fontello.css" rel="stylesheet" />
   </head>
   <body>
@@ -70,8 +70,24 @@
           <button id="reload" class="button">
             <span class="icon-arrows-cw"></span>Reload
           </button>
+          <div class="auto-stop-controls">
+            <input type="checkbox" id="auto-stop-enabled" checked="" />
+            Auto-stop recording after
+
+            <input
+              type="number"
+              id="silence-minutes"
+              value="60"
+              min="1"
+              max="180"
+            />min
+          </div>
         </div>
-        <div id="error" class="hidden"></div>
+        <div id="errors" class="hidden"></div>
+        <details id="messages">
+          <summary>Messages</summary>
+          <div id="message-log"></div>
+        </details>
         <div id="footer">
           <a href="https://github.com/porjo/babelcast"
             ><span class="icon-github-circled" id="github-logo"></span>Github
