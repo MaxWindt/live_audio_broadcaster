@@ -28,6 +28,10 @@
             clicking 'Connect'.<br />If the server requires a password enter it
             below, otherwise leave blank.
           </p>
+          <p id="audio-prompt" class="audio-prompt">
+            <strong>Note:</strong> Clicking Connect will request access to your
+            microphone.
+          </p>
           <table>
             <tr>
               <th>Channel:</th>
@@ -38,8 +42,8 @@
               <td><input type="password" id="password" /></td>
             </tr>
           </table>
-          <button id="connect-button" class="button hidden">Connect</button>
-          <div id="spinner">
+          <button id="connect-button" class="button">Connect</button>
+          <div id="spinner" class="hidden">
             <p>Negotiating connection...</p>
             <div class="sk-fading-circle">
               <div class="sk-circle1 sk-circle"></div>
