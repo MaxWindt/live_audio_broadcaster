@@ -11,107 +11,11 @@ var channelPassword = "";
 var wasRecording = false;
 var micEnabled = true;
 var autoStopEnabled = true; // Add this line
-var audioInitialized = false;
 
 // Add a debug function
 var debug = function (...args) {
   console.log(...args);
 };
-
-// Initialize audio context and get media after user interaction
-function initializeAudio() {
-  return new Promise((resolve, reject) => {
-    try {
-      // Create AudioContext
-      window.AudioContext = window.AudioContext || window.webkitAudioContext;
-      window.audioContext = new AudioContext();
-
-      // Get media
-      navigator.mediaDevices
-        .getUserMedia(constraints)
-        .then((stream) => {
-          audioTrack = stream.getAudioTracks()[0];
-          stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-          // Set initial mic state
-          audioTrack.enabled = micEnabled;
-
-          const soundMeter = new SoundMeter(window.audioContext);
-          soundMeter.connectToSource(stream, function (e) {
-            if (e) {
-              alert(e);
-              reject(e);
-              return;
-            }
-
-            try {
-              mediaRecorder = new MediaRecorder(stream);
-              debug(
-                "MediaRecorder initialized with mimeType:",
-                mediaRecorder.mimeType
-              );
-
-              mediaRecorder.ondataavailable = handleDataAvailable;
-              mediaRecorder.onstop = handleStop;
-              mediaRecorder.onerror = (event) =>
-                debug("MediaRecorder error:", event);
-
-              debug("MediaRecorder event handlers set up");
-            } catch (error) {
-              debug("Error setting up MediaRecorder:", error);
-              reject(error);
-              return;
-            }
-
-            // make the meter value relative to a sliding max
-            let max = 0.0;
-            setInterval(() => {
-              let val = soundMeter.instant.toFixed(2);
-              if (val > max) {
-                max = val;
-              }
-              if (max > 0) {
-                val = val / max;
-              }
-              signalMeter.value = val;
-
-              // Updated silence check logic
-              if (val < 0.03 && recording && autoStopEnabled) {
-                if (!silenceStart) {
-                  silenceStart = Date.now();
-                  debug("Silence detected, starting timer");
-                } else if (
-                  Date.now() - silenceStart >
-                  stopAfterMinutesSilence * 60 * 1000
-                ) {
-                  debug(
-                    "Silence threshold reached, stopping and restarting recording"
-                  );
-                  stopRecording();
-                  startRecording();
-                  silenceStart = null;
-                }
-              } else {
-                if (silenceStart) {
-                  debug("Silence ended");
-                }
-                silenceStart = null;
-              }
-            }, 50);
-
-            resolve(stream);
-          });
-        })
-        .catch((error) => {
-          debug("getUserMedia error:", error);
-          reject(error);
-        });
-    } catch (e) {
-      alert("Web Audio API not supported.");
-      reject(e);
-    }
-  });
-}
 
 // Add event listeners for the new controls
 document.addEventListener("DOMContentLoaded", function () {
@@ -139,9 +43,6 @@ document.addEventListener("DOMContentLoaded", function () {
     silenceMinutesInput.disabled = !this.checked;
     debug("Auto-stop recording", autoStopEnabled ? "enabled" : "disabled");
   });
-
-  // Restore settings if any
-  restoreSettings();
 });
 
 document.getElementById("reload").addEventListener("click", function () {
@@ -292,51 +193,11 @@ var connectToChannel = function (channel, password) {
 document.getElementById("input-form").addEventListener("submit", function (e) {
   e.preventDefault();
 
-  // Show the spinner
-  document.getElementById("spinner").classList.remove("hidden");
-  // Hide the connect button
-  document.getElementById("connect-button").classList.add("hidden");
-
   // Get values from form
   channelName = document.getElementById("channel").value;
   channelPassword = document.getElementById("password").value;
 
-  // Initialize audio if not already initialized
-  if (!audioInitialized) {
-    initializeAudio()
-      .then(() => {
-        audioInitialized = true;
-
-        // Create and send WebRTC offer
-        pc.createOffer()
-          .then((d) => {
-            pc.setLocalDescription(d);
-            let val = { Key: "session_publisher", Value: d };
-            wsSend(val);
-
-            // Now connect to the channel
-            connectToChannel(channelName, channelPassword);
-          })
-          .catch((error) => {
-            debug("Error creating offer:", error);
-            document.getElementById("spinner").classList.add("hidden");
-            document
-              .getElementById("connect-button")
-              .classList.remove("hidden");
-          });
-      })
-      .catch((error) => {
-        debug("Error initializing audio:", error);
-        document.getElementById("spinner").classList.add("hidden");
-        document.getElementById("connect-button").classList.remove("hidden");
-        error(
-          "Failed to access microphone. Please ensure you have given permission and try again."
-        );
-      });
-  } else {
-    // If audio is already initialized, just connect to the channel
-    connectToChannel(channelName, channelPassword);
-  }
+  connectToChannel(channelName, channelPassword);
 });
 
 // Function to restore settings after page reload or reconnection
@@ -400,8 +261,6 @@ ws.onmessage = function (e) {
         error("server error", wsMsg.Value);
         document.getElementById("output").classList.add("hidden");
         document.getElementById("input-form").classList.remove("hidden");
-        document.getElementById("spinner").classList.add("hidden");
-        document.getElementById("connect-button").classList.remove("hidden");
         break;
       case "sd_answer":
         startSession(wsMsg.Value);
@@ -522,13 +381,85 @@ function attemptReconnect() {
       };
 
       // Re-establish the WebRTC connection
-      initializeAudio()
-        .then(() => {
-          audioInitialized = true;
+      navigator.mediaDevices
+        .getUserMedia(constraints)
+        .then((stream) => {
+          audioTrack = stream.getAudioTracks()[0];
+          stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+          // Set mic state based on previous state
+          audioTrack.enabled = micEnabled;
+
+          const soundMeter = new SoundMeter(window.audioContext);
+          soundMeter.connectToSource(stream, function (e) {
+            if (e) {
+              alert(e);
+              return;
+            }
+
+            try {
+              mediaRecorder = new MediaRecorder(stream);
+              debug(
+                "MediaRecorder initialized with mimeType:",
+                mediaRecorder.mimeType
+              );
+
+              mediaRecorder.ondataavailable = handleDataAvailable;
+              mediaRecorder.onstop = handleStop;
+              mediaRecorder.onerror = (event) =>
+                debug("MediaRecorder error:", event);
+
+              debug("MediaRecorder event handlers set up");
+            } catch (error) {
+              debug("Error setting up MediaRecorder:", error);
+            }
+
+            // make the meter value relative to a sliding max
+            let max = 0.0;
+            setInterval(() => {
+              let val = soundMeter.instant.toFixed(2);
+              if (val > max) {
+                max = val;
+              }
+              if (max > 0) {
+                val = val / max;
+              }
+              signalMeter.value = val;
+
+              // Updated silence check logic
+              if (val < 0.03 && recording && autoStopEnabled) {
+                if (!silenceStart) {
+                  silenceStart = Date.now();
+                  debug("Silence detected, starting timer");
+                } else if (
+                  Date.now() - silenceStart >
+                  stopAfterMinutesSilence * 60 * 1000
+                ) {
+                  debug(
+                    "Silence threshold reached, stopping and restarting recording"
+                  );
+                  stopRecording();
+                  startRecording();
+                  silenceStart = null;
+                }
+              } else {
+                if (silenceStart) {
+                  debug("Silence ended");
+                }
+                silenceStart = null;
+              }
+            }, 50);
+          });
+
+          pc.createOffer()
+            .then((d) => {
+              pc.setLocalDescription(d);
+              let val = { Key: "session_publisher", Value: d };
+              wsSend(val);
+            })
+            .catch(debug);
         })
-        .catch((error) => {
-          debug("Error re-initializing audio:", error);
-        });
+        .catch((error) => debug("getUserMedia error:", error));
 
       // Update message handlers
       ws.onmessage = function (e) {
@@ -544,10 +475,6 @@ function attemptReconnect() {
               error("server error", wsMsg.Value);
               document.getElementById("output").classList.add("hidden");
               document.getElementById("input-form").classList.remove("hidden");
-              document.getElementById("spinner").classList.add("hidden");
-              document
-                .getElementById("connect-button")
-                .classList.remove("hidden");
               break;
             case "sd_answer":
               startSession(wsMsg.Value);
@@ -596,7 +523,155 @@ const constraints = (window.constraints = {
   video: false,
 });
 
+try {
+  window.AudioContext = window.AudioContext || window.webkitAudioContext;
+  window.audioContext = new AudioContext();
+} catch (e) {
+  alert("Web Audio API not supported.");
+}
+
 const signalMeter = document.querySelector("#microphone-meter meter");
+
+navigator.mediaDevices
+  .getUserMedia(constraints)
+  .then((stream) => {
+    audioTrack = stream.getAudioTracks()[0];
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+    // Restore settings if available
+    const settings = restoreSettings();
+
+    // Set initial mic state
+    if (settings && typeof settings.micEnabled !== "undefined") {
+      audioTrack.enabled = settings.micEnabled;
+      if (settings.micEnabled) {
+        let micEle = document.getElementById("microphone");
+        micEle.classList.remove("icon-mute");
+        micEle.classList.add("icon-mic");
+        micEle.classList.add("on");
+      }
+    } else {
+      // Default is muted
+      audioTrack.enabled = true;
+    }
+
+    micEnabled = audioTrack.enabled;
+
+    const soundMeter = new SoundMeter(window.audioContext);
+    soundMeter.connectToSource(stream, function (e) {
+      if (e) {
+        alert(e);
+        return;
+      }
+
+      try {
+        mediaRecorder = new MediaRecorder(stream);
+        debug(
+          "MediaRecorder initialized with mimeType:",
+          mediaRecorder.mimeType
+        );
+
+        mediaRecorder.ondataavailable = handleDataAvailable;
+        mediaRecorder.onstop = handleStop;
+        mediaRecorder.onerror = (event) => debug("MediaRecorder error:", event);
+
+        debug("MediaRecorder event handlers set up");
+
+        // If we have restored settings and we should be recording, start recording
+        if (settings && settings.wasRecording) {
+          // Delay starting recording to ensure everything is ready
+          setTimeout(startRecording, 1000);
+        }
+      } catch (error) {
+        debug("Error setting up MediaRecorder:", error);
+      }
+
+      // make the meter value relative to a sliding max
+      let max = 0.0;
+      setInterval(() => {
+        let val = soundMeter.instant.toFixed(2);
+        if (val > max) {
+          max = val;
+        }
+        if (max > 0) {
+          val = val / max;
+        }
+        signalMeter.value = val;
+
+        // Updated silence check logic
+        if (val < 0.03 && recording && autoStopEnabled) {
+          if (!silenceStart) {
+            silenceStart = Date.now();
+            debug("Silence detected, starting timer");
+          } else if (
+            Date.now() - silenceStart >
+            stopAfterMinutesSilence * 60 * 1000
+          ) {
+            debug(
+              "Silence threshold reached, stopping and restarting recording"
+            );
+            stopRecording();
+            startRecording();
+            silenceStart = null;
+          }
+        } else {
+          if (silenceStart) {
+            debug("Silence ended");
+          }
+          silenceStart = null;
+        }
+      }, 50);
+    });
+
+    pc.createOffer()
+      .then((d) => {
+        pc.setLocalDescription(d);
+        let val = { Key: "session_publisher", Value: d };
+        wsSend(val);
+      })
+      .catch(debug);
+
+    // Auto-connect to channel if we have settings
+    if (settings && settings.channel) {
+      // First wait for connection to be established
+      const checkConnectionState = setInterval(() => {
+        if (
+          pc.iceConnectionState === "connected" ||
+          pc.iceConnectionState === "completed"
+        ) {
+          clearInterval(checkConnectionState);
+
+          // Auto-fill form and submit if needed
+          if (
+            document
+              .getElementById("input-form")
+              .classList.contains("hidden") === false
+          ) {
+            document.getElementById("channel").value = settings.channel;
+            if (settings.password) {
+              document.getElementById("password").value = settings.password;
+            }
+
+            // Connect to the channel
+            connectToChannel(settings.channel, settings.password);
+          }
+        }
+      }, 500);
+
+      // Set a timeout to clear the interval after 10 seconds if connection isn't established
+      setTimeout(() => {
+        clearInterval(checkConnectionState);
+      }, 10000);
+    }
+  })
+  .catch((error) => debug("getUserMedia error:", error));
+
+pc.onicecandidate = (e) => {
+  if (e.candidate && e.candidate.candidate !== "") {
+    let val = { Key: "ice_candidate", Value: e.candidate };
+    wsSend(val);
+  }
+};
 
 pc.oniceconnectionstatechange = (e) => {
   debug("ICE state:", pc.iceConnectionState);
