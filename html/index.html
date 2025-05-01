@@ -95,7 +95,14 @@
             text-align: center;
           "
         >
-          <span id="powered_by">Powered by</span>
+          <button
+            id="toggle-message-log"
+            class="toggle-message-log mdl-button mdl-js-button mdl-button--icon"
+            onclick="document.getElementById('message-log-container').classList.toggle('hidden')"
+          >
+            <i class="material-icons">terminal</i>
+          </button>
+          <span id="powered_by"> Powered by</span>
           <a href="https://github.com/porjo/babelcast">Babelcast</a>
         </p>
       </div>
@@ -104,23 +111,7 @@
 
     <script src="js/common.js"></script>
     <script src="js/subscriber.js"></script>
-    <script src="js/utils.js"></script>
     <script src="teamData.js"></script>
-    <script>
-      translate_text();
-      const themeButton = document.getElementById("themeButton");
-      const themes = ["white", "default", "dark", "blue", "green"];
-
-      // Load saved theme on page load
-      let currentTheme = localStorage.getItem("lab_page_theme") || 0;
-      document.body.className = themes[currentTheme];
-
-      // Save theme on change
-      themeButton.addEventListener("click", () => {
-        currentTheme = (currentTheme + 1) % themes.length;
-        document.body.className = themes[currentTheme];
-        localStorage.setItem("lab_page_theme", currentTheme); // Save the selected theme
-      });
-    </script>
+    <script src="js/utils.js"></script>
   </body>
 </html>
