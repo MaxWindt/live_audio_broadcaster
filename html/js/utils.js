@@ -88,3 +88,30 @@ themeButton.addEventListener("click", () => {
   document.body.className = themes[currentTheme];
   localStorage.setItem("lab_page_theme", currentTheme); // Save the selected theme
 });
+
+function detectConnectionLoss(callback, checkInterval = 1000) {
+  let wasOnline = true;
+
+  function checkConnection() {
+    // Use a small image or endpoint that should always be available
+    fetch("/favicon.ico", {
+      mode: "no-cors",
+      cache: "no-store",
+    })
+      .then(() => {
+        wasOnline = true;
+      })
+      .catch(() => {
+        if (wasOnline) {
+          wasOnline = false;
+          callback();
+        }
+      })
+      .finally(() => {
+        setTimeout(checkConnection, checkInterval);
+      });
+  }
+
+  // Start checking
+  checkConnection();
+}

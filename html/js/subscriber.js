@@ -239,9 +239,9 @@ function initializeSubscriber() {
 
     // Function to handle long pause
     function handleLongPause() {
+      // playButton.innerHTML = '<span class="material-icons">refresh</span>';
       playButton.onclick = function () {
         window.location.reload();
-        // triggerNewConnection;
       };
     }
 
@@ -252,6 +252,14 @@ function initializeSubscriber() {
         window.location.reload();
       };
     };
+
+    detectConnectionLoss(() => {
+      console.log("Connection lost!");
+      playButton.innerHTML = '<span class="material-icons">refresh</span>';
+      playButton.onclick = function () {
+        window.location.reload();
+      };
+    });
 
     audio.onwaiting = function () {
       console.log("waiting for audio data");
