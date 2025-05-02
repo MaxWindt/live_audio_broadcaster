@@ -82,8 +82,16 @@
         </button>
       </div>
       <div id="errors" class="hidden"></div>
-      <div id="message-log-container" class="hidden">
-        <div id="message-log"></div>
+      <div id="message-log-dialog" class="mdl-dialog">
+        <div class="mdl-dialog__title">
+          <span>Message Log</span>
+          <button class="mdl-button mdl-button--icon close-dialog">
+            <i class="material-icons">X</i>
+          </button>
+        </div>
+        <div class="mdl-dialog__content">
+          <div id="message-log"></div>
+        </div>
       </div>
       <div id="footer">
         <p
@@ -96,9 +104,8 @@
           "
         >
           <button
-            id="toggle-message-log"
-            class="toggle-message-log mdl-button mdl-js-button mdl-button--icon"
-            onclick="document.getElementById('message-log-container').classList.toggle('hidden')"
+            id="open-message-log"
+            class="mdl-button mdl-js-button mdl-button--icon"
           >
             <i class="material-icons">terminal</i>
           </button>
@@ -108,7 +115,165 @@
       </div>
     </div>
     <div id="block_buttons_layer" class="hidden"></div>
+    <style>
+      .mdl-dialog {
+        border: none;
+        box-shadow: 0 9px 46px 8px rgba(0, 0, 0, 0.14),
+          0 11px 15px -7px rgba(0, 0, 0, 0.12),
+          0 24px 38px 3px rgba(0, 0, 0, 0.2);
+        width: 80%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow: hidden;
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+        background-color: white;
+        border-radius: 4px;
+      }
 
+      .mdl-dialog__title {
+        padding: 24px 24px 0;
+        margin: 0;
+        font-size: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .mdl-dialog__content {
+        padding: 20px 24px 24px;
+        color: rgba(0, 0, 0, 0.54);
+        font-size: 14px;
+        max-height: 60vh;
+        overflow-y: auto;
+        text-align: left;
+      }
+
+      .mdl-dialog__actions {
+        padding: 8px;
+        display: flex;
+        justify-content: flex-end;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      #message-log {
+        font-family: monospace;
+        white-space: pre-wrap;
+        line-height: 1.5;
+        font-size: 12px;
+        color: #333;
+      }
+
+      /* Dialog backdrop */
+      .dialog-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        display: none;
+      }
+
+      /* Button in footer */
+      #open-message-log {
+        margin-left: 10px;
+        vertical-align: middle;
+        color: var(--text-color);
+      }
+
+      /* For dark themes */
+      body.dark #message-log-dialog {
+        background-color: #333;
+        color: #fff;
+      }
+
+      body.dark .mdl-dialog__content {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      body.dark #message-log {
+        color: #ccc;
+      }
+    </style>
+
+    <!-- JavaScript changes for log dialog interaction -->
+    <script>
+      // Add this to the end of your subscriber.js file or in a script tag in the HTML
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // Elements
+        const messageLogDialog = document.getElementById("message-log-dialog");
+        const messageLog = document.getElementById("message-log");
+        const openLogButton = document.getElementById("open-message-log");
+        const closeButtons = document.querySelectorAll(".close-dialog");
+        const clearLogButton = document.querySelector(".clear-log");
+
+        // Create backdrop
+        const backdrop = document.createElement("div");
+        backdrop.className = "dialog-backdrop";
+        document.body.appendChild(backdrop);
+
+        // Open dialog
+        openLogButton.addEventListener("click", function () {
+          messageLogDialog.style.display = "block";
+          backdrop.style.display = "block";
+
+          // Scroll to bottom of log
+          messageLog.scrollTop = messageLog.scrollHeight;
+        });
+
+        // Close dialog (via buttons)
+        closeButtons.forEach((button) => {
+          button.addEventListener("click", function () {
+            messageLogDialog.style.display = "none";
+            backdrop.style.display = "none";
+          });
+        });
+
+        // Close dialog when clicking backdrop
+        backdrop.addEventListener("click", function () {
+          messageLogDialog.style.display = "none";
+          backdrop.style.display = "none";
+        });
+
+        // Clear log
+        clearLogButton.addEventListener("click", function () {
+          messageLog.textContent = "";
+        });
+
+        // Close on ESC key
+        document.addEventListener("keydown", function (e) {
+          if (
+            e.key === "Escape" &&
+            messageLogDialog.style.display === "block"
+          ) {
+            messageLogDialog.style.display = "none";
+            backdrop.style.display = "none";
+          }
+        });
+
+        // Override the original message function to auto-scroll log
+        // Make a backup of the original function
+        const originalMsgFunction = window.msg;
+
+        // Override with our enhanced version
+        window.msg = function (m) {
+          // Call the original function
+          originalMsgFunction(m);
+
+          // Auto-scroll to bottom when new messages arrive
+          if (messageLogDialog.style.display === "block") {
+            messageLog.scrollTop = messageLog.scrollHeight;
+          }
+        };
+      });
+    </script>
     <script src="js/common.js"></script>
     <script src="js/subscriber.js"></script>
     <script src="teamData.js"></script>

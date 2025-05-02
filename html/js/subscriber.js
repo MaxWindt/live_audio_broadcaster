@@ -3,16 +3,7 @@ var getChannelsId = setInterval(function () {
   let val = { Key: "get_channels" };
   wsSend(val);
 }, 1000);
-document.getElementById("play").addEventListener("click", function () {
-  const audio = document.getElementById("audio");
-  if (audio) {
-    if (audio.paused) {
-      audio.play();
-    } else {
-      audio.pause();
-    }
-  }
-});
+
 function initializeSubscriber() {
   function updateChannels(channels) {
     let channelsEle = document.querySelector("#channels div");
@@ -101,11 +92,11 @@ function initializeSubscriber() {
       localStorage.setItem("lab_channel", params.Channel);
 
       // Clean up existing connections properly, this will start a new connection
-      cleanupConnections();
+      triggerNewConnection();
     }
   }
 
-  function cleanupConnections() {
+  function triggerNewConnection() {
     // Close any existing audio tracks
     const audio = document.getElementById("audio");
     if (audio) {
@@ -226,20 +217,37 @@ function initializeSubscriber() {
   function setupAudioHandlers(audio) {
     const playButton = document.getElementById("play");
 
-    // Visibility change handler
-    document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState === "visible" && audio.paused) {
-        // Try to play when coming back to page
-        audio.play().catch((err) => {
-          console.error("Failed to play audio:", err);
-        });
+    playButton.addEventListener("click", function () {
+      if (audio) {
+        if (audio.paused) {
+          audio.play();
+        } else {
+          audio.pause();
+        }
       }
     });
+
+    let pauseTimer = null;
+
+    // Clear pause timer helper function
+    function clearPauseTimer() {
+      if (pauseTimer) {
+        clearTimeout(pauseTimer);
+        pauseTimer = null;
+      }
+    }
+
+    // Function to handle long pause
+    function handleLongPause() {
+      playButton.onclick = function () {
+        window.location.reload();
+        // triggerNewConnection;
+      };
+    }
 
     // Audio state handlers
     audio.onended = function () {
       console.log("stream ended");
-      playButton.innerHTML = '<span class="material-icons">refresh</span>';
       playButton.onclick = function () {
         window.location.reload();
       };
@@ -262,10 +270,14 @@ function initializeSubscriber() {
     // Play/Pause button handlers
     audio.onplay = function () {
       playButton.innerHTML = '<i class="material-icons">pause</i>';
+      clearPauseTimer(); // Clear timer when playing
     };
 
     audio.onpause = function () {
       playButton.innerHTML = '<i class="material-icons">play_arrow</i>';
+      // Start timer when paused
+      clearPauseTimer(); // Clear any existing timer
+      pauseTimer = setTimeout(handleLongPause, 60000); // 1 minute
     };
 
     // Set initial button state
