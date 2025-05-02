@@ -54,6 +54,7 @@ document.getElementById("reload").addEventListener("click", function () {
     wasRecording: recording,
     autoStopEnabled: autoStopEnabled,
     stopAfterMinutesSilence: stopAfterMinutesSilence,
+    microphoneId: localStorage.getItem("babelcast_microphone_id"),
   };
 
   // Store settings in localStorage for persistence
@@ -237,6 +238,11 @@ var restoreSettings = function () {
           stopAfterMinutesSilence;
       }
 
+      // Restore microphone selection if available
+      if (settings.microphoneId) {
+        localStorage.setItem("babelcast_microphone_id", settings.microphoneId);
+      }
+
       // Clear the settings to prevent unexpected auto-connections on manual page refreshes
       localStorage.removeItem("babelcast_settings");
 
@@ -380,9 +386,21 @@ function attemptReconnect() {
         }
       };
 
-      // Re-establish the WebRTC connection
+      // Re-establish the WebRTC connection using the selected microphone
+      const audioConstraints = window.getAudioConstraints
+        ? window.getAudioConstraints()
+        : {
+            audio: {
+              channels: 1,
+              autoGainControl: true,
+              echoCancellation: false,
+              noiseSuppression: false,
+            },
+            video: false,
+          };
+
       navigator.mediaDevices
-        .getUserMedia(constraints)
+        .getUserMedia(audioConstraints)
         .then((stream) => {
           audioTrack = stream.getAudioTracks()[0];
           stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -513,15 +531,18 @@ function attemptReconnect() {
 // -------- WebRTC ------------
 //
 
-const constraints = (window.constraints = {
-  audio: {
-    channels: 1,
-    autoGainControl: true,
-    echoCancellation: false,
-    noiseSuppression: false,
-  },
-  video: false,
-});
+// Use the audio constraints from microphone.js if available, otherwise use defaults
+const constraints = (window.constraints = window.getAudioConstraints
+  ? window.getAudioConstraints()
+  : {
+      audio: {
+        channels: 1,
+        autoGainControl: true,
+        echoCancellation: false,
+        noiseSuppression: false,
+      },
+      video: false,
+    });
 
 try {
   window.AudioContext = window.AudioContext || window.webkitAudioContext;

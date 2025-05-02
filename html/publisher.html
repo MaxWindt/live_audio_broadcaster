@@ -35,7 +35,15 @@
             </tr>
             <tr>
               <th>Password:</th>
-              <td><input type="password" id="password" /></td>
+              <td><input type="password" id="password" class="hidden" /></td>
+            </tr>
+            <tr>
+              <th>Microphone:</th>
+              <td style="width: 60%">
+                <select id="microphone-select">
+                  <option value="default">Default Microphone</option>
+                </select>
+              </td>
             </tr>
           </table>
           <button id="connect-button" class="button hidden">Connect</button>
@@ -98,6 +106,7 @@
     </div>
 
     <script src="js/common.js"></script>
+    <script src="js/microphone.js"></script>
     <script src="js/publisher.js"></script>
     <script src="js/soundmeter.js"></script>
   </body>
