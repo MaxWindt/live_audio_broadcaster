@@ -10,7 +10,7 @@ var channelName = "";
 var channelPassword = "";
 var wasRecording = false;
 var micEnabled = true;
-var autoStopEnabled = true; // Add this line
+var autoStopEnabled = true;
 
 // Add a debug function
 var debug = function (...args) {
