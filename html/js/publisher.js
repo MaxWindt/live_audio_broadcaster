@@ -141,6 +141,7 @@ var handleStop = function () {
     });
     debug("Blob created, size:", blob.size);
     sendBlob(blob);
+    silenceStart = null;
   } catch (error) {
     debug("Error creating blob:", error);
   }
@@ -149,6 +150,16 @@ var handleStop = function () {
 var sendBlob = function (blob) {
   debug("sendBlob called, blob size:", blob.size);
   let date = new Date();
+  if (silenceStart) {
+    // Calculate the actual end of speech time by subtracting the silence duration
+    const silenceDurationMs = stopAfterMinutesSilence * 60 * 1000;
+    date = new Date(Date.now() - silenceDurationMs);
+    debug(
+      "Adjusted timestamp for silence duration:",
+      stopAfterMinutesSilence,
+      "minutes"
+    );
+  }
   let filename = `${channelName.replace(/\s+/g, "_")}_${date.getFullYear()}${
     date.getMonth() + 1 < 10 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1
   }${date.getDate() < 10 ? "0" + date.getDate() : date.getDate()}_${
@@ -460,7 +471,6 @@ function attemptReconnect() {
                   );
                   stopRecording();
                   startRecording();
-                  silenceStart = null;
                 }
               } else {
                 if (silenceStart) {
@@ -635,7 +645,6 @@ navigator.mediaDevices
             );
             stopRecording();
             startRecording();
-            silenceStart = null;
           }
         } else {
           if (silenceStart) {
