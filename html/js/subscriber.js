@@ -283,6 +283,7 @@ function initializeSubscriber() {
 
     audio.onpause = function () {
       playButton.innerHTML = '<i class="material-icons">play_arrow</i>';
+      document.getElementById("spinner").classList.add("hidden");
       // Start timer when paused
       clearPauseTimer(); // Clear any existing timer
       pauseTimer = setTimeout(handleLongPause, 60000); // 1 minute
