@@ -263,7 +263,7 @@ function initializeSubscriber() {
 
     audio.onwaiting = function () {
       console.log("waiting for audio data");
-      document.getElementById("spinner").classList.remove("hidden");
+      if (!audio.paused) document.getElementById("spinner").classList.remove("hidden");
     };
 
     audio.oncanplaythrough = function () {
