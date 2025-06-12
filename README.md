@@ -32,6 +32,10 @@ Except when testing against localhost, web browsers require that TLS (`https://`
 
 See this [Stackoverflow post](https://stackoverflow.com/a/34198101/202311) for more information.
 
+### Testing in Chrome
+
+If you want to test Babelcast using Chrome, you may need to visit `chrome://flags/#unsafely-treat-insecure-origin-as-secure` and add `http://192...` to the list so that Chrome allows you to use the microphone.
+
 ## Credit
 
 Thanks to the excellent [Pion](https://github.com/pion/webrtc) library for making WebRTC so accessible.
