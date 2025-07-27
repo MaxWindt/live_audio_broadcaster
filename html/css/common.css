@@ -231,6 +231,29 @@ label {
   margin-bottom: 8px;
 }
 
+.volume-controls {
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.volume-controls label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.volume-controls input[type="range"] {
+  width: 100%;
+  margin: 8px 0;
+}
+
+.volume-controls small {
+  color: #666;
+  font-size: 0.9em;
+}
+
 /* CSS Spinner
  * http://tobiasahlin.com/spinkit/
  */

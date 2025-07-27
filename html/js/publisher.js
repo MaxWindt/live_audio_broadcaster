@@ -11,20 +11,71 @@ var channelPassword = "";
 var wasRecording = false;
 var micEnabled = true;
 var autoStopEnabled = true;
+var gainNode = null;
+var amplifiedStream = null;
+var volumeGain = 1.0;
 
 // Add a debug function
 var debug = function (...args) {
   console.log(...args);
 };
 
+// Function to create amplified audio stream
+var createAmplifiedStream = function (originalStream) {
+  if (!window.audioContext) {
+    debug("AudioContext not available");
+    return originalStream;
+  }
+
+  try {
+    // Create audio nodes
+    const source = window.audioContext.createMediaStreamSource(originalStream);
+    gainNode = window.audioContext.createGain();
+    const destination = window.audioContext.createMediaStreamDestination();
+
+    // Connect the nodes
+    source.connect(gainNode);
+    gainNode.connect(destination);
+
+    // Set initial gain
+    gainNode.gain.value = volumeGain;
+
+    debug("Audio amplification chain created, initial gain:", volumeGain);
+    return destination.stream;
+  } catch (error) {
+    debug("Error creating amplified stream:", error);
+    return originalStream;
+  }
+};
+
+// Function to update volume gain
+var updateVolumeGain = function (newGain) {
+  volumeGain = Math.max(0.1, Math.min(5.0, newGain)); // Limit between 0.1x and 5x
+  if (gainNode) {
+    gainNode.gain.value = volumeGain;
+    debug("Volume gain updated to:", volumeGain);
+  }
+  
+  // Update UI display
+  const volumeDisplay = document.getElementById("volume-display");
+  if (volumeDisplay) {
+    volumeDisplay.textContent = Math.round(volumeGain * 100) + "%";
+  }
+};
+
 // Add event listeners for the new controls
 document.addEventListener("DOMContentLoaded", function () {
   const silenceMinutesInput = document.getElementById("silence-minutes");
   const autoStopEnabledCheckbox = document.getElementById("auto-stop-enabled");
+  const volumeSlider = document.getElementById("volume-slider");
 
   // Initialize controls with current values
   silenceMinutesInput.value = stopAfterMinutesSilence;
   autoStopEnabledCheckbox.checked = autoStopEnabled;
+  if (volumeSlider) {
+    volumeSlider.value = volumeGain * 100;
+    updateVolumeGain(volumeGain);
+  }
 
   // Add event listeners
   silenceMinutesInput.addEventListener("change", function () {
@@ -43,6 +94,14 @@ document.addEventListener("DOMContentLoaded", function () {
     silenceMinutesInput.disabled = !this.checked;
     debug("Auto-stop recording", autoStopEnabled ? "enabled" : "disabled");
   });
+
+  // Volume slider event listener
+  if (volumeSlider) {
+    volumeSlider.addEventListener("input", function () {
+      const newGain = parseFloat(this.value) / 100;
+      updateVolumeGain(newGain);
+    });
+  }
 });
 
 document.getElementById("reload").addEventListener("click", function () {
@@ -54,6 +113,7 @@ document.getElementById("reload").addEventListener("click", function () {
     wasRecording: recording,
     autoStopEnabled: autoStopEnabled,
     stopAfterMinutesSilence: stopAfterMinutesSilence,
+    volumeGain: volumeGain,
     microphoneId: localStorage.getItem("babelcast_microphone_id"),
   };
 
@@ -77,8 +137,22 @@ var toggleMic = function () {
   micEle.classList.toggle("icon-mute");
   micEle.classList.toggle("icon-mic");
   micEle.classList.toggle("on");
-  audioTrack.enabled = micEle.classList.contains("icon-mic");
-  micEnabled = audioTrack.enabled;
+  
+  const isEnabled = micEle.classList.contains("icon-mic");
+  
+  // Toggle original audio track
+  if (audioTrack) {
+    audioTrack.enabled = isEnabled;
+  }
+  
+  // Toggle amplified stream tracks
+  if (amplifiedStream) {
+    amplifiedStream.getAudioTracks().forEach(track => {
+      track.enabled = isEnabled;
+    });
+  }
+  
+  micEnabled = isEnabled;
 };
 
 var toggleRecording = function () {
@@ -250,6 +324,16 @@ var restoreSettings = function () {
         document.getElementById("silence-minutes").value =
           stopAfterMinutesSilence;
       }
+      
+      // Restore volume settings
+      if (typeof settings.volumeGain !== "undefined") {
+        volumeGain = settings.volumeGain;
+        const volumeSlider = document.getElementById("volume-slider");
+        if (volumeSlider) {
+          volumeSlider.value = volumeGain * 100;
+          updateVolumeGain(volumeGain);
+        }
+      }
 
       // Restore microphone selection if available
       if (settings.microphoneId) {
@@ -416,7 +500,12 @@ function attemptReconnect() {
         .getUserMedia(audioConstraints)
         .then((stream) => {
           audioTrack = stream.getAudioTracks()[0];
-          stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+          
+          // Create amplified stream for WebRTC and recording
+          amplifiedStream = createAmplifiedStream(stream);
+          
+          // Use amplified stream for WebRTC
+          amplifiedStream.getTracks().forEach((track) => pc.addTrack(track, amplifiedStream));
 
           // Set mic state based on previous state
           audioTrack.enabled = micEnabled;
@@ -429,7 +518,8 @@ function attemptReconnect() {
             }
 
             try {
-              mediaRecorder = new MediaRecorder(stream);
+              // Use amplified stream for recording
+              mediaRecorder = new MediaRecorder(amplifiedStream);
               debug(
                 "MediaRecorder initialized with mimeType:",
                 mediaRecorder.mimeType
@@ -569,7 +659,12 @@ navigator.mediaDevices
   .getUserMedia(constraints)
   .then((stream) => {
     audioTrack = stream.getAudioTracks()[0];
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    
+    // Create amplified stream for WebRTC and recording
+    amplifiedStream = createAmplifiedStream(stream);
+    
+    // Use amplified stream for WebRTC
+    amplifiedStream.getTracks().forEach((track) => pc.addTrack(track, amplifiedStream));
 
     // Restore settings if available
     const settings = restoreSettings();
@@ -598,7 +693,8 @@ navigator.mediaDevices
       }
 
       try {
-        mediaRecorder = new MediaRecorder(stream);
+        // Use amplified stream for recording
+        mediaRecorder = new MediaRecorder(amplifiedStream);
         debug(
           "MediaRecorder initialized with mimeType:",
           mediaRecorder.mimeType

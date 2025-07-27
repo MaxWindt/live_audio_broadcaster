@@ -90,6 +90,19 @@
               max="180"
             />min
           </div>
+          
+          <div class="volume-controls">
+            <label for="volume-slider">Volume: <span id="volume-display">100%</span></label>
+            <input
+              type="range"
+              id="volume-slider"
+              min="10"
+              max="500"
+              value="100"
+              step="10"
+            />
+            <small>Adjust microphone input volume (10% - 500%)</small>
+          </div>
         </div>
         <div id="errors" class="hidden"></div>
         <details id="messages">
