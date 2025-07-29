@@ -32,9 +32,9 @@ Except when testing against localhost, web browsers require that TLS (`https://`
 
 See this [Stackoverflow post](https://stackoverflow.com/a/34198101/202311) for more information.
 
-### Testing in Chrome
+### Using Publisher on a different computer in the same network
 
-If you want to test Babelcast using Chrome, you may need to visit `chrome://flags/#unsafely-treat-insecure-origin-as-secure` and add `http://192...` to the list so that Chrome allows you to use the microphone.
+If you want to stream audio through a different device then the server , you may need to visit `chrome://flags/#unsafely-treat-insecure-origin-as-secure` and add `http://192...` or `http://li.ve` to the list so that Chrome allows you to use the microphone.
 
 ## Credit
 
