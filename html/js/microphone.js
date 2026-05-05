@@ -49,8 +49,8 @@ function populateMicrophoneDropdown() {
     microphoneSelect.appendChild(option);
   });
 
-  // Restore selected microphone from localStorage if available
-  const savedMicrophoneId = localStorage.getItem("babelcast_microphone_id");
+  // Restore selected microphone: prefer sessionStorage (per-tab) over localStorage
+  const savedMicrophoneId = sessionStorage.getItem("babelcast_microphone_id") || localStorage.getItem("babelcast_microphone_id");
   if (savedMicrophoneId) {
     // Check if the saved device is in the list
     const deviceExists = Array.from(microphoneSelect.options).some(
@@ -69,6 +69,7 @@ function populateMicrophoneDropdown() {
 // Function to save the selected microphone
 function saveMicrophoneSelection() {
   const selectedMicrophoneId = microphoneSelect.value;
+  sessionStorage.setItem("babelcast_microphone_id", selectedMicrophoneId);
   localStorage.setItem("babelcast_microphone_id", selectedMicrophoneId);
 
   // Trigger a reload to apply the new microphone
@@ -97,7 +98,7 @@ function saveMicrophoneSelection() {
 
 // Function to get constraints with the selected microphone
 function getAudioConstraints() {
-  const savedMicrophoneId = localStorage.getItem("babelcast_microphone_id");
+  const savedMicrophoneId = sessionStorage.getItem("babelcast_microphone_id") || localStorage.getItem("babelcast_microphone_id");
 
   const constraints = {
     audio: {

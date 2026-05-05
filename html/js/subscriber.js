@@ -4,7 +4,70 @@ var getChannelsId = setInterval(function () {
   wsSend(val);
 }, 1000);
 
+// Module-level: survive across initializeSubscriber() reinvocations on WS reconnect
+var _visibilityHandler = null;
+var _stopConnectionLoss = null;
+
 function initializeSubscriber() {
+  // --- Wake Lock (prevents Android from stopping audio via energy saving) ---
+  var wakeLock = null;
+
+  async function requestWakeLock() {
+    if ("wakeLock" in navigator) {
+      try {
+        wakeLock = await navigator.wakeLock.request("screen");
+        // Track system-initiated releases (battery saver, lock screen) so re-acquire works
+        wakeLock.addEventListener("release", function () {
+          wakeLock = null;
+        });
+      } catch (err) {
+        console.log("Wake lock error:", err.message);
+      }
+    }
+  }
+
+  function releaseWakeLock() {
+    if (wakeLock) {
+      wakeLock.release().then(() => { wakeLock = null; });
+    }
+  }
+
+  // Remove previous handler before re-registering (prevents listener accumulation on WS reconnect)
+  if (_visibilityHandler) {
+    document.removeEventListener("visibilitychange", _visibilityHandler);
+  }
+  _visibilityHandler = function () {
+    if (document.visibilityState === "visible") {
+      // Re-acquire lock (system releases it on screen-off / battery saver)
+      if (wakeLock === null) {
+        const audio = document.getElementById("audio");
+        if (audio && !audio.paused) requestWakeLock();
+      }
+      // Kick the audio pipeline after the tab returns to foreground
+      const audio = document.getElementById("audio");
+      if (audio && !audio.paused) audio.play().catch(() => {});
+    }
+  };
+  document.addEventListener("visibilitychange", _visibilityHandler);
+
+  // --- Loading timeout (auto-reload if spinner stays visible too long) ---
+  var loadingTimer = null;
+
+  function startLoadingTimeout() {
+    clearLoadingTimeout();
+    loadingTimer = setTimeout(function () {
+      console.log("Loading timeout reached, reloading...");
+      window.location.reload();
+    }, 4000);
+  }
+
+  function clearLoadingTimeout() {
+    if (loadingTimer) {
+      clearTimeout(loadingTimer);
+      loadingTimer = null;
+    }
+  }
+
   function updateChannels(channels) {
     let channelsEle = document.querySelector("#channels div");
     channelsEle.innerHTML = "";
@@ -75,6 +138,7 @@ function initializeSubscriber() {
     } else {
       document.getElementById("play").classList.add("hidden");
       document.getElementById("spinner").classList.remove("hidden");
+      // Note: no loading timeout here — ICE state changes in common.js handle failures
 
       // Remove 'playing' class from all channels
       document.querySelectorAll(".playing").forEach((el) => {
@@ -149,7 +213,7 @@ function initializeSubscriber() {
               Channel: localStorage.getItem("lab_channel"),
             };
             // Wait for the channel element to be available before adding the class and connecting
-            const waitForElement = setInterval(() => {
+            var waitForElement = setInterval(() => {
               const channelElement = document.getElementById(params.Channel);
               if (channelElement) {
                 channelElement.classList.add("playing");
@@ -160,6 +224,8 @@ function initializeSubscriber() {
                 clearInterval(waitForElement);
               }
             }, 100);
+            // Stop waiting after 5s if the channel button never appears
+            setTimeout(() => clearInterval(waitForElement), 5000);
           }
           break;
         case "ice_candidate":
@@ -174,6 +240,7 @@ function initializeSubscriber() {
 
   ws.onclose = function () {
     console.log("websocket connection closed, restarting...");
+    if (_stopConnectionLoss) { _stopConnectionLoss(); _stopConnectionLoss = null; }
     pc.close();
     document.getElementById("media").classList.add("hidden");
     clearInterval(getChannelsId);
@@ -217,15 +284,33 @@ function initializeSubscriber() {
   function setupAudioHandlers(audio) {
     const playButton = document.getElementById("play");
 
-    playButton.addEventListener("click", function () {
+    // Use onclick to replace any previous handler (prevents stacking on each ontrack event)
+    playButton.onclick = function () {
       if (audio) {
         if (audio.paused) {
-          audio.play();
+          audio.play().catch(() => {});
         } else {
           audio.pause();
         }
       }
-    });
+    };
+
+    // currentTime-based stall detection: catches Android freezes that don't fire onwaiting
+    var lastCurrentTime = null;
+    var stallCheckInterval = setInterval(function () {
+      if (!audio.paused && !audio.ended) {
+        if (lastCurrentTime !== null && audio.currentTime === lastCurrentTime) {
+          console.log("Audio stalled (currentTime frozen), reloading...");
+          clearInterval(stallCheckInterval);
+          window.location.reload();
+          return;
+        }
+        lastCurrentTime = audio.currentTime;
+      } else {
+        lastCurrentTime = null;
+      }
+    }, 3000);
+    audio.addEventListener("emptied", function () { clearInterval(stallCheckInterval); });
 
     let pauseTimer = null;
 
@@ -248,12 +333,15 @@ function initializeSubscriber() {
     // Audio state handlers
     audio.onended = function () {
       console.log("stream ended");
+      releaseWakeLock();
       playButton.onclick = function () {
         window.location.reload();
       };
     };
 
-    detectConnectionLoss(() => {
+    // Stop any previous loop before starting a new one (prevents accumulation on reconnect)
+    if (_stopConnectionLoss) { _stopConnectionLoss(); }
+    _stopConnectionLoss = detectConnectionLoss(() => {
       console.log("Connection lost!");
       playButton.innerHTML = '<span class="material-icons">refresh</span>';
       playButton.onclick = function () {
@@ -263,11 +351,15 @@ function initializeSubscriber() {
 
     audio.onwaiting = function () {
       console.log("waiting for audio data");
-      if (!audio.paused) document.getElementById("spinner").classList.remove("hidden");
+      if (!audio.paused) {
+        document.getElementById("spinner").classList.remove("hidden");
+        startLoadingTimeout();
+      }
     };
 
     audio.oncanplaythrough = function () {
       document.getElementById("spinner").classList.add("hidden");
+      clearLoadingTimeout();
     };
 
     audio.onerror = function () {
@@ -279,6 +371,8 @@ function initializeSubscriber() {
     audio.onplay = function () {
       playButton.innerHTML = '<i class="material-icons">pause</i>';
       clearPauseTimer(); // Clear timer when playing
+      clearLoadingTimeout();
+      requestWakeLock();
     };
 
     audio.onpause = function () {
@@ -287,6 +381,7 @@ function initializeSubscriber() {
       // Start timer when paused
       clearPauseTimer(); // Clear any existing timer
       pauseTimer = setTimeout(handleLongPause, 60000); // 1 minute
+      releaseWakeLock();
     };
 
     // Set initial button state

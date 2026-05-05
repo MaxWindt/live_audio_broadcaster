@@ -91,8 +91,10 @@ themeButton.addEventListener("click", () => {
 
 function detectConnectionLoss(callback, checkInterval = 1000) {
   let wasOnline = true;
+  let stopped = false;
 
   function checkConnection() {
+    if (stopped) return;
     // Use a small image or endpoint that should always be available
     fetch("/favicon.ico", {
       mode: "no-cors",
@@ -108,10 +110,11 @@ function detectConnectionLoss(callback, checkInterval = 1000) {
         }
       })
       .finally(() => {
-        setTimeout(checkConnection, checkInterval);
+        if (!stopped) setTimeout(checkConnection, checkInterval);
       });
   }
 
   // Start checking
   checkConnection();
+  return function stop() { stopped = true; };
 }

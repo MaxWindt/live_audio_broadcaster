@@ -105,7 +105,14 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 document.getElementById("reload").addEventListener("click", function () {
-  // Store current settings before reload
+  saveCurrentSettings();
+  window.location.reload(false);
+});
+
+// Saves current publisher settings to localStorage so they survive a reload.
+// Also registered as window.saveSettingsForReload so common.js can call it
+// before an ICE-failure-triggered reload.
+var saveCurrentSettings = function () {
   const currentSettings = {
     channel: channelName,
     password: channelPassword,
@@ -114,15 +121,11 @@ document.getElementById("reload").addEventListener("click", function () {
     autoStopEnabled: autoStopEnabled,
     stopAfterMinutesSilence: stopAfterMinutesSilence,
     volumeGain: volumeGain,
-    microphoneId: localStorage.getItem("babelcast_microphone_id"),
+    microphoneId: sessionStorage.getItem("babelcast_microphone_id") || localStorage.getItem("babelcast_microphone_id"),
   };
-
-  // Store settings in localStorage for persistence
   localStorage.setItem("babelcast_settings", JSON.stringify(currentSettings));
-
-  // Reload the page
-  window.location.reload(false);
-});
+};
+window.saveSettingsForReload = saveCurrentSettings;
 
 document.getElementById("microphone").addEventListener("click", function () {
   toggleMic();
@@ -335,8 +338,9 @@ var restoreSettings = function () {
         }
       }
 
-      // Restore microphone selection if available
+      // Restore microphone selection into sessionStorage (per-tab, survives reload)
       if (settings.microphoneId) {
+        sessionStorage.setItem("babelcast_microphone_id", settings.microphoneId);
         localStorage.setItem("babelcast_microphone_id", settings.microphoneId);
       }
 
@@ -419,7 +423,7 @@ function attemptReconnect() {
 
   try {
     // Create a new WebSocket
-    ws = new WebSocket(ws_uri);
+    ws = new WebSocket(window.ws_uri);
 
     ws.onopen = function () {
       debug("Reconnection successful");
@@ -434,17 +438,13 @@ function attemptReconnect() {
       });
 
       // Set up event handlers
+      var iceReconnectTimer = null;
       pc.oniceconnectionstatechange = (e) => {
         debug("ICE state:", pc.iceConnectionState);
         switch (pc.iceConnectionState) {
-          case "new":
-          case "checking":
-          case "failed":
-          case "disconnected":
-          case "closed":
-            break;
           case "connected":
           case "completed":
+            if (iceReconnectTimer) { clearTimeout(iceReconnectTimer); iceReconnectTimer = null; }
             document.getElementById("spinner").classList.add("hidden");
             let cb = document.getElementById("connect-button");
             if (cb) {
@@ -469,6 +469,23 @@ function attemptReconnect() {
               micEle.classList.add("icon-mic");
               micEle.classList.add("on");
             }
+            break;
+          case "disconnected":
+            iceReconnectTimer = setTimeout(function () {
+              if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
+                saveCurrentSettings();
+                window.location.reload();
+              }
+            }, 5000);
+            break;
+          case "failed":
+            if (iceReconnectTimer) { clearTimeout(iceReconnectTimer); iceReconnectTimer = null; }
+            saveCurrentSettings();
+            window.location.reload();
+            break;
+          case "new":
+          case "checking":
+          case "closed":
             break;
           default:
             debug("ice state unknown", e);
@@ -800,28 +817,5 @@ pc.onicecandidate = (e) => {
     wsSend(val);
   }
 };
-
-pc.oniceconnectionstatechange = (e) => {
-  debug("ICE state:", pc.iceConnectionState);
-  switch (pc.iceConnectionState) {
-    case "new":
-    case "checking":
-    case "failed":
-      console.log("ICE state:", pc.iceConnectionState);
-    case "disconnected":
-      console.log("ICE state:", pc.iceConnectionState);
-    case "closed":
-      break;
-    case "connected":
-    case "completed":
-      document.getElementById("spinner").classList.add("hidden");
-      let cb = document.getElementById("connect-button");
-      if (cb) {
-        cb.classList.remove("hidden");
-      }
-      break;
-    default:
-      debug("ice state unknown", e);
-      break;
-  }
-};
+// ICE connection state changes are handled by the handler set in common.js,
+// which triggers saveSettingsForReload() + window.location.reload() on failure.
