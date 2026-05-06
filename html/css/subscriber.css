@@ -98,6 +98,18 @@ h1 {
   color: var(--button-background-color);
 }
 
+.reload-pill {
+  margin: 10px auto;
+  padding: 8px 28px;
+  background-color: var(--play-button-color);
+  color: var(--button-background-color);
+  border: none;
+  border-radius: 999px;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+}
+
 .active {
   background-color: var(--background-color);
 }

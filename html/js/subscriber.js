@@ -52,9 +52,19 @@ function initializeSubscriber() {
 
   // --- Loading timeout (auto-reload if spinner stays visible too long) ---
   var loadingTimer = null;
+  var reloadPillTimer = null;
+
+  function showReloadPill() {
+    document.getElementById("reload-pill").classList.remove("hidden");
+  }
+
+  function hideReloadPill() {
+    document.getElementById("reload-pill").classList.add("hidden");
+  }
 
   function startLoadingTimeout() {
     clearLoadingTimeout();
+    reloadPillTimer = setTimeout(showReloadPill, 3000);
     loadingTimer = setTimeout(function () {
       console.log("Loading timeout reached, reloading...");
       window.location.reload();
@@ -66,6 +76,11 @@ function initializeSubscriber() {
       clearTimeout(loadingTimer);
       loadingTimer = null;
     }
+    if (reloadPillTimer) {
+      clearTimeout(reloadPillTimer);
+      reloadPillTimer = null;
+    }
+    hideReloadPill();
   }
 
   function updateChannels(channels) {
@@ -138,7 +153,7 @@ function initializeSubscriber() {
     } else {
       document.getElementById("play").classList.add("hidden");
       document.getElementById("spinner").classList.remove("hidden");
-      // Note: no loading timeout here — ICE state changes in common.js handle failures
+      startLoadingTimeout();
 
       // Remove 'playing' class from all channels
       document.querySelectorAll(".playing").forEach((el) => {
@@ -279,6 +294,7 @@ function initializeSubscriber() {
     // Show the media container and play button
     mediaContainer.classList.remove("hidden");
     document.getElementById("play").classList.remove("hidden");
+    clearLoadingTimeout();
   };
 
   function setupAudioHandlers(audio) {
