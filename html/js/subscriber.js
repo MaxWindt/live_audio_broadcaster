@@ -7,6 +7,8 @@ var getChannelsId = setInterval(function () {
 // Module-level: survive across initializeSubscriber() reinvocations on WS reconnect
 var _visibilityHandler = null;
 var _stopConnectionLoss = null;
+var _loadingTimer = null;
+var _reloadPillTimer = null;
 
 function initializeSubscriber() {
   // --- Wake Lock (prevents Android from stopping audio via energy saving) ---
@@ -51,8 +53,8 @@ function initializeSubscriber() {
   document.addEventListener("visibilitychange", _visibilityHandler);
 
   // --- Loading timeout (auto-reload if spinner stays visible too long) ---
-  var loadingTimer = null;
-  var reloadPillTimer = null;
+  // NOTE: _loadingTimer / _reloadPillTimer are module-level so they survive
+  // ws.onclose → initializeSubscriber() reinvocations and can always be canceled.
 
   function showReloadPill() {
     document.getElementById("reload-pill").classList.remove("hidden");
@@ -64,21 +66,21 @@ function initializeSubscriber() {
 
   function startLoadingTimeout() {
     clearLoadingTimeout();
-    reloadPillTimer = setTimeout(showReloadPill, 3000);
-    loadingTimer = setTimeout(function () {
+    _reloadPillTimer = setTimeout(showReloadPill, 3000);
+    _loadingTimer = setTimeout(function () {
       console.log("Loading timeout reached, reloading...");
       window.location.reload();
     }, 4000);
   }
 
   function clearLoadingTimeout() {
-    if (loadingTimer) {
-      clearTimeout(loadingTimer);
-      loadingTimer = null;
+    if (_loadingTimer) {
+      clearTimeout(_loadingTimer);
+      _loadingTimer = null;
     }
-    if (reloadPillTimer) {
-      clearTimeout(reloadPillTimer);
-      reloadPillTimer = null;
+    if (_reloadPillTimer) {
+      clearTimeout(_reloadPillTimer);
+      _reloadPillTimer = null;
     }
     hideReloadPill();
   }
@@ -222,6 +224,7 @@ function initializeSubscriber() {
             .getElementById("block_buttons_layer")
             .classList.add("hidden");
           document.getElementById("spinner").classList.add("hidden");
+          clearLoadingTimeout();
           // Auto-connect to the previously selected channel if available
           if (localStorage.getItem("lab_channel")) {
             var params = {
@@ -232,6 +235,8 @@ function initializeSubscriber() {
               const channelElement = document.getElementById(params.Channel);
               if (channelElement) {
                 channelElement.classList.add("playing");
+                document.getElementById("spinner").classList.remove("hidden");
+                startLoadingTimeout();
                 wsSend({
                   Key: "connect_subscriber",
                   Value: params,
@@ -417,6 +422,10 @@ function initializeSubscriber() {
       })
       .catch(debug);
   };
+
+  // Start loading timeout — covers both initial page load and WS reconnect.
+  // The spinner is visible at this point; if we never reach pc.ontrack the pill/reload fires.
+  startLoadingTimeout();
 
   // Create offer if WS is ready, otherwise queue
   ws.readyState == WebSocket.OPEN ? f() : onWSReady.push(f);
