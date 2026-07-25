@@ -15,6 +15,8 @@ Download a [precompiled binary](https://github.com/porjo/babelcast/releases/late
 
 ```
 Usage of ./babelcast:
+  -caddy-domain string
+        if set, ensure Caddy is running and reverse-proxying this domain to -port over HTTPS
   -debug
         enable debug log
   -port int
@@ -28,9 +30,29 @@ password before they can connect.
 
 ### TLS
 
-Except when testing against localhost, web browsers require that TLS (`https://`) be in use any time media devices (e.g. microphone) are in use. You should put Babelcast behind a reverse proxy that can provide SSL certificates e.g. [Caddy](https://github.com/caddyserver/caddy).
+Except when testing against localhost, web browsers require that TLS (`https://`) be in use any time media devices (e.g. microphone) are in use, and mobile OSes require it for lock-screen media controls (Media Session API). You should put Babelcast behind a reverse proxy that can provide SSL certificates e.g. [Caddy](https://github.com/caddyserver/caddy).
 
 See this [Stackoverflow post](https://stackoverflow.com/a/34198101/202311) for more information.
+
+#### Built-in Caddy integration
+
+Pass `-caddy-domain` and Babelcast will make sure [Caddy](https://github.com/caddyserver/caddy) is running as a reverse proxy in front of it, obtaining an HTTPS certificate automatically:
+
+```
+sudo ./babelcast -port 8080 -caddy-domain li.ve
+```
+
+(`sudo` is required so Caddy can bind ports 80/443 — see below.)
+
+This requires `caddy` to be installed and in `PATH` (e.g. `brew install caddy` on macOS). On startup, Babelcast checks whether Caddy is already running (via its admin API on `127.0.0.1:2019`):
+- If it's already running, Babelcast leaves it alone and just starts normally.
+- If not, Babelcast generates a Caddyfile reverse-proxying `<domain> -> 127.0.0.1:<port>` and launches Caddy itself. Caddy keeps running in the background independent of Babelcast — restarting Babelcast won't restart Caddy, and stopping Babelcast doesn't stop Caddy either.
+
+You still need to forward WAN ports `80` and `443` (TCP) from your router to the server's LAN IP, and have `-caddy-domain`'s DNS pointing at your public IP — Caddy needs port 80 for the ACME challenge and 443 to serve. Give the server a DHCP reservation/static LAN IP so the forwarding rule doesn't break later.
+
+**Ports below 1024 require root.** If you run Babelcast unprivileged (no `sudo`), Caddy will fail to bind 80/443 and you'll see a permission error in the log — Babelcast keeps working on its own port regardless, just without HTTPS in front of it. Run with `sudo` to let Caddy bind those ports.
+
+If you'd rather manage Caddy yourself (e.g. as an always-on `brew services` daemon, decoupled from Babelcast entirely), `deploy/Caddyfile` is a static example of the same config — symlink it into place and start Caddy independently instead of using `-caddy-domain`.
 
 ### Using Publisher on a different computer in the same network
 
