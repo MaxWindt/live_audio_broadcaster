@@ -9,36 +9,6 @@ var _visibilityHandler = null;
 var _stopConnectionLoss = null;
 var _loadingTimer = null;
 var _reloadPillTimer = null;
-var _currentChannelName = null;
-
-// --- Media Session (lock screen "Now Playing" + tells mobile OS this tab is an active audio player) ---
-function setupMediaSession(audio) {
-  if (!("mediaSession" in navigator)) return;
-
-  navigator.mediaSession.metadata = new MediaMetadata({
-    title: _currentChannelName || "Live Audio Stream",
-    artist: "Babelcast",
-    artwork: [{ src: "favicon.ico", sizes: "32x32", type: "image/x-icon" }],
-  });
-
-  navigator.mediaSession.setActionHandler("play", function () {
-    audio.play().catch(() => {});
-  });
-  navigator.mediaSession.setActionHandler("pause", function () {
-    audio.pause();
-  });
-
-  // This is a live stream - no seeking or track navigation, hide those controls
-  ["seekbackward", "seekforward", "seekto", "previoustrack", "nexttrack"].forEach(
-    function (action) {
-      try {
-        navigator.mediaSession.setActionHandler(action, null);
-      } catch (e) {
-        // Action not supported by this browser, ignore
-      }
-    }
-  );
-}
 
 function initializeSubscriber() {
   // --- Wake Lock (prevents Android from stopping audio via energy saving) ---
@@ -195,9 +165,6 @@ function initializeSubscriber() {
       // Add 'playing' class to this channel
       buttonElement.classList.add("playing");
 
-      // Store display name for Media Session metadata (lock screen title)
-      _currentChannelName = buttonElement.textContent.trim() || buttonElement.id;
-
       // Connect to the selected channel
       let params = {};
       params.Channel = buttonElement.id;
@@ -268,7 +235,6 @@ function initializeSubscriber() {
               const channelElement = document.getElementById(params.Channel);
               if (channelElement) {
                 channelElement.classList.add("playing");
-                _currentChannelName = channelElement.textContent.trim() || channelElement.id;
                 document.getElementById("spinner").classList.remove("hidden");
                 startLoadingTimeout();
                 wsSend({
@@ -329,7 +295,6 @@ function initializeSubscriber() {
 
     // Setup audio event handlers
     setupAudioHandlers(audio);
-    setupMediaSession(audio);
 
     // Show the media container and play button
     mediaContainer.classList.remove("hidden");
@@ -390,7 +355,6 @@ function initializeSubscriber() {
     audio.onended = function () {
       console.log("stream ended");
       releaseWakeLock();
-      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "none";
       playButton.onclick = function () {
         window.location.reload();
       };
@@ -430,7 +394,6 @@ function initializeSubscriber() {
       clearPauseTimer(); // Clear timer when playing
       clearLoadingTimeout();
       requestWakeLock();
-      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
     };
 
     audio.onpause = function () {
@@ -440,7 +403,6 @@ function initializeSubscriber() {
       clearPauseTimer(); // Clear any existing timer
       pauseTimer = setTimeout(handleLongPause, 60000); // 1 minute
       releaseWakeLock();
-      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
     };
 
     // Set initial button state
