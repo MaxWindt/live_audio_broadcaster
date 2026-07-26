@@ -39,7 +39,6 @@ var (
 func main() {
 	port := flag.Int("port", 80, "listen on this port")
 	debug := flag.Bool("debug", false, "enable debug log")
-	caddyDomain := flag.String("caddy-domain", "", "if set, ensure Caddy is running and reverse-proxying this domain to -port over HTTPS (starts caddy if it isn't already running; requires caddy in PATH and, for ports 80/443, root)")
 	flag.Parse()
 
 	var programLevel = new(slog.LevelVar) // Info by default
@@ -61,10 +60,6 @@ func main() {
 	publisherPassword = os.Getenv("PUBLISHER_PASSWORD")
 	if publisherPassword != "" {
 		slog.Info("publisher password set")
-	}
-
-	if *caddyDomain != "" {
-		ensureCaddy(*caddyDomain, *port)
 	}
 
 	http.HandleFunc("/ws", wsHandler)
