@@ -30,6 +30,8 @@ password before they can connect.
 
 Except when testing against localhost, web browsers require that TLS (`https://`) be in use any time media devices (e.g. microphone) are in use. You should put Babelcast behind a reverse proxy that can provide SSL certificates e.g. [Caddy](https://github.com/caddyserver/caddy).
 
+Note that Caddy only serves HTTPS if it already has a certificate for your domain in place — it will not obtain one for you automatically. Provision the certificate yourself (e.g. via an existing ACME/Let's Encrypt setup) before pointing Caddy at Babelcast.
+
 See this [Stackoverflow post](https://stackoverflow.com/a/34198101/202311) for more information.
 
 ### Using Publisher on a different computer in the same network
