@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd LaunchAgent: starts live_audio_broadcaster at login and restarts it
+  if it exits.
+
+  If run_babelcast.sh isn't on your Desktop, edit the path in the command
+  below (it's expanded by bash via $HOME, so no username is hardcoded).
+
+  Install:
+    1. Copy this file to ~/Library/LaunchAgents/com.maxwindt.live_audio_broadcaster.plist
+    2. launchctl load ~/Library/LaunchAgents/com.maxwindt.live_audio_broadcaster.plist
+
+  Uninstall / stop:
+    launchctl unload ~/Library/LaunchAgents/com.maxwindt.live_audio_broadcaster.plist
+
+  Logs land at ~/Library/Logs/live_audio_broadcaster.log / .err.log
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.maxwindt.live_audio_broadcaster</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>exec "$HOME/Desktop/run_babelcast.sh" >> "$HOME/Library/Logs/live_audio_broadcaster.log" 2>> "$HOME/Library/Logs/live_audio_broadcaster.err.log"</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>

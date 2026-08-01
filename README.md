@@ -38,6 +38,39 @@ See this [Stackoverflow post](https://stackoverflow.com/a/34198101/202311) for m
 
 If you want to stream audio through a different device then the server , you may need to visit `chrome://flags/#unsafely-treat-insecure-origin-as-secure` and add `http://192...` or `http://li.ve` to the list so that Chrome allows you to use the microphone.
 
+### Running automatically at login (macOS)
+
+[com.maxwindt.live_audio_broadcaster.plist](com.maxwindt.live_audio_broadcaster.plist) is a `launchd` LaunchAgent that starts `run.sh` at login and restarts it if it exits. By default it expects the script at `~/Desktop/run_babelcast.sh` — edit the path in the plist's `ProgramArguments` command if yours lives elsewhere.
+
+Install and start:
+
+```
+cp com.maxwindt.live_audio_broadcaster.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.maxwindt.live_audio_broadcaster.plist
+```
+
+Reload after editing the plist:
+
+```
+launchctl unload ~/Library/LaunchAgents/com.maxwindt.live_audio_broadcaster.plist
+launchctl load ~/Library/LaunchAgents/com.maxwindt.live_audio_broadcaster.plist
+```
+
+Check it's running:
+
+```
+launchctl list | grep live_audio_broadcaster
+```
+
+Logs are written to `~/Library/Logs/live_audio_broadcaster.log` and `.err.log`.
+
+Remove it:
+
+```
+launchctl unload ~/Library/LaunchAgents/com.maxwindt.live_audio_broadcaster.plist
+rm ~/Library/LaunchAgents/com.maxwindt.live_audio_broadcaster.plist
+```
+
 ## Credit
 
 Thanks to the excellent [Pion](https://github.com/pion/webrtc) library for making WebRTC so accessible.
