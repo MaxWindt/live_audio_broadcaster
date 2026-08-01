@@ -7,6 +7,12 @@
 # one instead.
 set -euo pipefail
 
+# GUI launchers (e.g. macOS Automator) run with a minimal PATH that skips
+# ~/.zshrc, ~/.zprofile, etc., so tools installed via Homebrew or the Go
+# installer can be invisible even though they work fine in a terminal.
+# Append the common install locations so this script works either way.
+export PATH="$PATH:/usr/local/go/bin:/opt/homebrew/bin:/usr/local/bin:$HOME/go/bin"
+
 REPO_URL="https://github.com/MaxWindt/live_audio_broadcaster.git"
 CACHE_DIR="${LIVE_AUDIO_BROADCASTER_HOME:-$HOME/.local/share/live_audio_broadcaster}"
 SRC_DIR="$CACHE_DIR/src"
