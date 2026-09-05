@@ -30,10 +30,10 @@
         <i class="material-icons">interpreter_mode</i>
       </button>
       <button
-        class="theme-button mdl-button mdl-js-button mdl-button--icon mdl-button--icon noselect"
-        id="themeButton"
+        class="settings-button mdl-button mdl-js-button mdl-button--icon mdl-button--icon noselect"
+        id="open-settings"
       >
-        <i class="material-icons">palette</i>
+        <i class="material-icons">settings</i>
       </button>
     </div>
     <!-- Wide card with share menu button -->
@@ -94,6 +94,33 @@
         </div>
         <div class="mdl-dialog__content">
           <div id="message-log"></div>
+        </div>
+      </div>
+      <div id="settings-dialog" class="mdl-dialog">
+        <div class="mdl-dialog__title">
+          <span>Settings</span>
+          <button class="mdl-button mdl-button--icon close-settings-dialog">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
+        <div class="mdl-dialog__content">
+          <div id="theme-picker-label">Theme</div>
+          <div id="theme-picker">
+            <button class="theme-swatch" data-theme="white" title="White"></button>
+            <button class="theme-swatch" data-theme="default" title="Default"></button>
+            <button class="theme-swatch" data-theme="dark" title="Dark"></button>
+            <button class="theme-swatch" data-theme="blue" title="Blue"></button>
+            <button class="theme-swatch" data-theme="green" title="Green"></button>
+          </div>
+          <hr id="settings-divider" />
+          <label id="stable-mode-label">
+            <input type="checkbox" id="stable-mode-checkbox" />
+            Stable mode
+          </label>
+          <p id="stable-mode-description">
+            Plays with a longer delay, but is much less likely to cut out
+            when your screen is off. Turn this on if audio keeps dropping.
+          </p>
         </div>
       </div>
       <div id="footer">
@@ -190,8 +217,81 @@
         color: var(--text-color);
       }
 
+      /* Filled by default; outlined while Stable mode is on, as a quiet
+         reminder that it's active (delayed audio isn't a bug). The icon
+         font only ships solid glyphs, so the outline is faked by hiding
+         the fill and stroking the glyph's edge instead. */
+      #open-settings.stable-mode-active i {
+        color: transparent;
+        -webkit-text-stroke: 1.5px var(--text-color);
+      }
+
+      #theme-picker-label {
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      #theme-picker {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .theme-swatch {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        padding: 0;
+      }
+
+      .theme-swatch.active {
+        border-color: #ff9800;
+        box-shadow: 0 0 0 2px #ff9800;
+      }
+
+      .theme-swatch[data-theme="white"] {
+        background-color: #ffffff;
+      }
+      .theme-swatch[data-theme="default"] {
+        background-color: #f6a300;
+      }
+      .theme-swatch[data-theme="dark"] {
+        background-color: #1e1e1e;
+      }
+      .theme-swatch[data-theme="blue"] {
+        background-color: #007bff;
+      }
+      .theme-swatch[data-theme="green"] {
+        background-color: #28a745;
+      }
+
+      #settings-divider {
+        border: none;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        margin: 0 0 20px;
+      }
+
+      body.dark #settings-divider {
+        border-top-color: rgba(255, 255, 255, 0.2);
+      }
+
+      #stable-mode-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+
+      #stable-mode-description {
+        color: rgba(0, 0, 0, 0.54);
+        font-size: 13px;
+      }
+
       /* For dark themes */
-      body.dark #message-log-dialog {
+      body.dark #message-log-dialog,
+      body.dark #settings-dialog {
         background-color: #333;
         color: #fff;
       }
@@ -202,6 +302,10 @@
 
       body.dark #message-log {
         color: #ccc;
+      }
+
+      body.dark #stable-mode-description {
+        color: rgba(255, 255, 255, 0.54);
       }
     </style>
 
@@ -275,6 +379,79 @@
             messageLog.scrollTop = messageLog.scrollHeight;
           }
         };
+      });
+    </script>
+
+    <!-- Settings dialog (Stable mode toggle) -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const settingsDialog = document.getElementById("settings-dialog");
+        const openSettingsButton = document.getElementById("open-settings");
+        const closeButtons = document.querySelectorAll(
+          ".close-settings-dialog"
+        );
+        const stableModeCheckbox = document.getElementById(
+          "stable-mode-checkbox"
+        );
+        const themeSwatches = document.querySelectorAll(".theme-swatch");
+
+        const backdrop = document.createElement("div");
+        backdrop.className = "dialog-backdrop";
+        document.body.appendChild(backdrop);
+
+        function closeSettings() {
+          settingsDialog.style.display = "none";
+          backdrop.style.display = "none";
+        }
+
+        const stableModeOn = localStorage.getItem("lab_stable_mode") === "1";
+        stableModeCheckbox.checked = stableModeOn;
+        openSettingsButton.classList.toggle("stable-mode-active", stableModeOn);
+
+        function markActiveSwatch() {
+          themeSwatches.forEach((swatch) => {
+            swatch.classList.toggle(
+              "active",
+              swatch.dataset.theme === document.body.className
+            );
+          });
+        }
+
+        themeSwatches.forEach((swatch) => {
+          swatch.addEventListener("click", function () {
+            window.setTheme(swatch.dataset.theme);
+            markActiveSwatch();
+          });
+        });
+
+        openSettingsButton.addEventListener("click", function () {
+          markActiveSwatch();
+          settingsDialog.style.display = "block";
+          backdrop.style.display = "block";
+        });
+
+        closeButtons.forEach((button) => {
+          button.addEventListener("click", closeSettings);
+        });
+
+        backdrop.addEventListener("click", closeSettings);
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && settingsDialog.style.display === "block") {
+            closeSettings();
+          }
+        });
+
+        // Changing the mode requires re-establishing the audio pipeline
+        // from scratch, so just reload rather than trying to hot-swap it.
+        stableModeCheckbox.addEventListener("change", function () {
+          if (stableModeCheckbox.checked) {
+            localStorage.setItem("lab_stable_mode", "1");
+          } else {
+            localStorage.removeItem("lab_stable_mode");
+          }
+          window.location.reload();
+        });
       });
     </script>
     <script src="js/common.js"></script>

@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -193,6 +194,14 @@ func (c *Conn) rtcTrackHandlerPublisher(remoteTrack *webrtc.TrackRemote, receive
 			c.logger.Error("localTrack.write error", "err", err)
 			if !errors.Is(err, io.ErrClosedPipe) {
 				return
+			}
+		}
+
+		// Feed "Stable mode" HTTP fallback listeners, if any are connected.
+		if channel := reg.GetChannel(c.channelName); channel != nil && channel.Stable != nil && channel.Stable.Active() {
+			pkt := &rtp.Packet{}
+			if unmarshalErr := pkt.Unmarshal(rtpBuf[:i]); unmarshalErr == nil {
+				channel.Stable.WriteRTP(pkt)
 			}
 		}
 	}

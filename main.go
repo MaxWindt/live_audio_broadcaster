@@ -63,6 +63,7 @@ func main() {
 	}
 
 	http.HandleFunc("/ws", wsHandler)
+	http.HandleFunc("/stream/", stableStreamHandler)
 	http.Handle("/", http.FileServer(http.FS(embedContentHtml)))
 
 	slog.Info("listening on port", "port", *port)

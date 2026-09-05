@@ -21,6 +21,10 @@ type Channel struct {
 
 	Publisher   *Publisher
 	Subscribers map[string]*Subscriber
+
+	// Stable is the opt-in HTTP fallback stream ("Stable mode") for this
+	// channel. Lazily started/stopped, so it costs nothing when unused.
+	Stable *StableStream
 }
 
 type Publisher struct {
@@ -50,11 +54,15 @@ func (r *Registry) AddPublisher(channelName string, localTrack *webrtc.TrackLoca
 		}
 		channel.LocalTrack = localTrack
 		channel.Publisher = &p
+		if channel.Stable == nil {
+			channel.Stable = NewStableStream()
+		}
 	} else {
 		channel = &Channel{
 			LocalTrack:  localTrack,
 			Publisher:   &p,
 			Subscribers: make(map[string]*Subscriber),
+			Stable:      NewStableStream(),
 		}
 		r.channels[channelName] = channel
 	}
@@ -91,6 +99,9 @@ func (r *Registry) RemovePublisher(channelName string) {
 		// tell all subscribers to quit
 		for _, s := range channel.Subscribers {
 			close(s.QuitChan)
+		}
+		if channel.Stable != nil {
+			channel.Stable.StopAll()
 		}
 		slog.Info("publisher removed", "channel", channelName)
 	}

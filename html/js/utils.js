@@ -75,19 +75,17 @@ translate_text();
 
 // Theme Switcher
 
-const themeButton = document.getElementById("themeButton");
 const themes = ["white", "default", "dark", "blue", "green"];
 
 // Load saved theme on page load
-let currentTheme = localStorage.getItem("lab_page_theme") || 0;
-document.body.className = themes[currentTheme];
+document.body.className = localStorage.getItem("lab_page_theme") || "default";
 
-// Save theme on change
-themeButton.addEventListener("click", () => {
-  currentTheme = (currentTheme + 1) % themes.length;
-  document.body.className = themes[currentTheme];
-  localStorage.setItem("lab_page_theme", currentTheme); // Save the selected theme
-});
+// Picked from the theme swatches in the settings dialog
+window.setTheme = function (theme) {
+  if (!themes.includes(theme)) return;
+  document.body.className = theme;
+  localStorage.setItem("lab_page_theme", theme);
+};
 
 function detectConnectionLoss(callback, checkInterval = 1000) {
   let wasOnline = true;

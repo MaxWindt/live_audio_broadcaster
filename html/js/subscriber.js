@@ -10,6 +10,18 @@ var _stopConnectionLoss = null;
 var _loadingTimer = null;
 var _reloadPillTimer = null;
 var _currentChannelName = null;
+var _liveEdgeInterval = null;
+// Stable mode's self-healing buffer: how much headroom (seconds) the
+// live-edge catch-up keeps ahead of playback. Starts lean; each stall
+// ratchets it up (see onStableStall) so a shaky connection settles at
+// whatever latency it actually needs instead of reloading repeatedly.
+var _stableTargetMargin = 1.5;
+
+// "Stable mode": opt-in HTTP fallback (see settings panel). Plays a plain
+// <audio src> MP3 stream instead of WebRTC - higher latency, but mobile OSes
+// treat it as real background audio, so it's less likely to die when the
+// screen turns off. Read once per load; toggling it triggers a page reload.
+var _stableMode = localStorage.getItem("lab_stable_mode") === "1";
 
 // --- Media Session (lock screen "Now Playing" + tells mobile OS this tab is an active audio player) ---
 function setupMediaSession(audio) {
@@ -208,8 +220,13 @@ function initializeSubscriber() {
       // Store the channel selection
       localStorage.setItem("lab_channel", params.Channel);
 
-      // Clean up existing connections properly, this will start a new connection
-      triggerNewConnection();
+      if (_stableMode) {
+        // No WebRTC session needed - just point <audio> at the HTTP stream.
+        connectStable(params.Channel);
+      } else {
+        // Clean up existing connections properly, this will start a new connection
+        triggerNewConnection();
+      }
     }
   }
 
@@ -235,6 +252,43 @@ function initializeSubscriber() {
     window.location.reload(true);
   }
 
+  // Reveals the channel picker and auto-connects to the previously selected
+  // channel, if any. In normal mode this runs once the WebRTC preamble is
+  // confirmed ("session_received"); in Stable mode there's no such preamble,
+  // so it runs as soon as the WS is ready instead.
+  function revealChannelsAndAutoConnect() {
+    document.getElementById("channels").classList.remove("hidden");
+    document.getElementById("block_buttons_layer").classList.add("hidden");
+    document.getElementById("spinner").classList.add("hidden");
+    clearLoadingTimeout();
+    if (localStorage.getItem("lab_channel")) {
+      var params = {
+        Channel: localStorage.getItem("lab_channel"),
+      };
+      // Wait for the channel element to be available before adding the class and connecting
+      var waitForElement = setInterval(() => {
+        const channelElement = document.getElementById(params.Channel);
+        if (channelElement) {
+          channelElement.classList.add("playing");
+          _currentChannelName = channelElement.textContent.trim() || channelElement.id;
+          document.getElementById("spinner").classList.remove("hidden");
+          startLoadingTimeout();
+          if (_stableMode) {
+            connectStable(params.Channel);
+          } else {
+            wsSend({
+              Key: "connect_subscriber",
+              Value: params,
+            });
+          }
+          clearInterval(waitForElement);
+        }
+      }, 100);
+      // Stop waiting after 5s if the channel button never appears
+      setTimeout(() => clearInterval(waitForElement), 5000);
+    }
+  }
+
   ws.onmessage = function (e) {
     let wsMsg = JSON.parse(e.data);
     if ("Key" in wsMsg) {
@@ -255,35 +309,7 @@ function initializeSubscriber() {
           updateChannels(wsMsg.Value);
           break;
         case "session_received": // Wait for confirmation from server
-          document.getElementById("channels").classList.remove("hidden");
-          document
-            .getElementById("block_buttons_layer")
-            .classList.add("hidden");
-          document.getElementById("spinner").classList.add("hidden");
-          clearLoadingTimeout();
-          // Auto-connect to the previously selected channel if available
-          if (localStorage.getItem("lab_channel")) {
-            var params = {
-              Channel: localStorage.getItem("lab_channel"),
-            };
-            // Wait for the channel element to be available before adding the class and connecting
-            var waitForElement = setInterval(() => {
-              const channelElement = document.getElementById(params.Channel);
-              if (channelElement) {
-                channelElement.classList.add("playing");
-                _currentChannelName = channelElement.textContent.trim() || channelElement.id;
-                document.getElementById("spinner").classList.remove("hidden");
-                startLoadingTimeout();
-                wsSend({
-                  Key: "connect_subscriber",
-                  Value: params,
-                });
-                clearInterval(waitForElement);
-              }
-            }, 100);
-            // Stop waiting after 5s if the channel button never appears
-            setTimeout(() => clearInterval(waitForElement), 5000);
-          }
+          revealChannelsAndAutoConnect();
           break;
         case "ice_candidate":
           pc.addIceCandidate(wsMsg.Value);
@@ -305,39 +331,85 @@ function initializeSubscriber() {
     initializeSubscriber();
   };
 
+  // Creates a fresh <audio> element wired up with the same handlers
+  // (play/pause button, wake lock, media session, stall detection) used by
+  // both the WebRTC path (srcObject) and Stable mode (plain src URL).
+  function createAudioElement() {
+    const mediaContainer = document.getElementById("media");
+
+    if (mediaContainer.innerHTML.trim() !== "") {
+      mediaContainer.innerHTML = "";
+    }
+
+    let audio = document.createElement("audio");
+    audio.id = "audio";
+    audio.autoplay = true;
+    audio.playsInline = true;
+    mediaContainer.appendChild(audio);
+
+    setupAudioHandlers(audio);
+    setupMediaSession(audio);
+
+    mediaContainer.classList.remove("hidden");
+    document.getElementById("play").classList.remove("hidden");
+    clearLoadingTimeout();
+
+    return audio;
+  }
+
+  // Stable mode: point a plain <audio> element at the server's HTTP fallback
+  // stream for this channel instead of negotiating WebRTC.
+  function connectStable(channelName) {
+    debug("stable mode: connecting to " + channelName);
+    _stableTargetMargin = 1.5;
+    let audio = createAudioElement();
+    audio.src = "stream/" + encodeURIComponent(channelName);
+
+    // The browser buffers ahead of what it's actually playing for a live
+    // HTTP stream (this is part of what makes it background-safe), which
+    // otherwise means playback keeps falling further behind live the whole
+    // session. Periodically skip forward to near the buffered edge so it
+    // stays close to "now" instead of slowly draining that backlog. The
+    // tolerated gap and catch-up target both track _stableTargetMargin, so
+    // a connection that's been stalling gets more headroom, not less.
+    if (_liveEdgeInterval) clearInterval(_liveEdgeInterval);
+    _liveEdgeInterval = setInterval(function () {
+      if (audio.paused || audio.buffered.length === 0) return;
+      let liveEdge = audio.buffered.end(audio.buffered.length - 1);
+      if (liveEdge - audio.currentTime > _stableTargetMargin + 2) {
+        audio.currentTime = Math.max(0, liveEdge - _stableTargetMargin);
+      }
+    }, 2000);
+    audio.addEventListener("emptied", function () {
+      clearInterval(_liveEdgeInterval);
+    });
+  }
+
+  // Called when Stable mode's audio stalls. Unlike the WebRTC path, a stall
+  // here is normal network jitter, not a dead connection - reloading would
+  // just discard the buffer and restart cold. Instead, widen the buffer
+  // margin so future playback tolerates more jitter before it can stall
+  // again, and only fall back to reloading if it stays stuck much longer
+  // (a real dead stream, not a blip).
+  function onStableStall() {
+    clearLoadingTimeout();
+    _stableTargetMargin = Math.min(_stableTargetMargin + 0.5, 20);
+    console.log("stable mode: stall detected, widening buffer target to " + _stableTargetMargin + "s");
+    _reloadPillTimer = setTimeout(showReloadPill, 15000);
+    _loadingTimer = setTimeout(function () {
+      console.log("stable mode: stalled too long, reloading...");
+      window.location.reload();
+    }, 30000);
+  }
+
   //
   // -------- WebRTC ------------
   //
 
   pc.ontrack = function (event) {
     debug("webrtc: ontrack");
-
-    let audio;
-    const mediaContainer = document.getElementById("media");
-
-    // Clear the media container if needed
-    if (mediaContainer.innerHTML.trim() !== "") {
-      mediaContainer.innerHTML = "";
-    }
-
-    // Create a new audio element
-    audio = document.createElement("audio");
-    audio.id = "audio";
+    let audio = createAudioElement();
     audio.srcObject = event.streams[0];
-    audio.autoplay = true;
-    audio.playsInline = true;
-
-    // Add the audio element to the page
-    mediaContainer.appendChild(audio);
-
-    // Setup audio event handlers
-    setupAudioHandlers(audio);
-    setupMediaSession(audio);
-
-    // Show the media container and play button
-    mediaContainer.classList.remove("hidden");
-    document.getElementById("play").classList.remove("hidden");
-    clearLoadingTimeout();
   };
 
   function setupAudioHandlers(audio) {
@@ -354,15 +426,26 @@ function initializeSubscriber() {
       }
     };
 
+    // Stable mode: has playback gotten going at least once? Initial startup
+    // buffering looks identical to a stall (currentTime stuck at 0,
+    // onwaiting firing) but isn't one - only treat it as a real stall once
+    // we've actually played smoothly before, so the buffer margin doesn't
+    // get inflated before anything has actually gone wrong.
+    var hasStartedPlaying = false;
+
     // currentTime-based stall detection: catches Android freezes that don't fire onwaiting
     var lastCurrentTime = null;
     var stallCheckInterval = setInterval(function () {
       if (!audio.paused && !audio.ended) {
         if (lastCurrentTime !== null && audio.currentTime === lastCurrentTime) {
-          console.log("Audio stalled (currentTime frozen), reloading...");
-          clearInterval(stallCheckInterval);
-          window.location.reload();
-          return;
+          if (_stableMode) {
+            if (hasStartedPlaying) onStableStall();
+          } else {
+            console.log("Audio stalled (currentTime frozen), reloading...");
+            clearInterval(stallCheckInterval);
+            window.location.reload();
+            return;
+          }
         }
         lastCurrentTime = audio.currentTime;
       } else {
@@ -413,11 +496,16 @@ function initializeSubscriber() {
       console.log("waiting for audio data");
       if (!audio.paused) {
         document.getElementById("spinner").classList.remove("hidden");
-        startLoadingTimeout();
+        if (_stableMode) {
+          if (hasStartedPlaying) onStableStall();
+        } else {
+          startLoadingTimeout();
+        }
       }
     };
 
     audio.oncanplaythrough = function () {
+      hasStartedPlaying = true;
       document.getElementById("spinner").classList.add("hidden");
       clearLoadingTimeout();
     };
@@ -450,26 +538,34 @@ function initializeSubscriber() {
     playButton.innerHTML = '<i class="material-icons">play_arrow</i>';
   }
 
-  pc.addTransceiver("audio");
-
-  let f = () => {
-    debug("webrtc: create offer");
-    pc.createOffer()
-      .then((d) => {
-        debug("webrtc: set local description");
-        pc.setLocalDescription(d);
-        let val = { Key: "session_subscriber", Value: d };
-        wsSend(val);
-      })
-      .catch(debug);
-  };
-
   // Start loading timeout — covers both initial page load and WS reconnect.
   // The spinner is visible at this point; if we never reach pc.ontrack the pill/reload fires.
   startLoadingTimeout();
 
-  // Create offer if WS is ready, otherwise queue
-  ws.readyState == WebSocket.OPEN ? f() : onWSReady.push(f);
+  if (!_stableMode) {
+    pc.addTransceiver("audio");
+
+    let f = () => {
+      debug("webrtc: create offer");
+      pc.createOffer()
+        .then((d) => {
+          debug("webrtc: set local description");
+          pc.setLocalDescription(d);
+          let val = { Key: "session_subscriber", Value: d };
+          wsSend(val);
+        })
+        .catch(debug);
+    };
+
+    // Create offer if WS is ready, otherwise queue
+    ws.readyState == WebSocket.OPEN ? f() : onWSReady.push(f);
+  } else {
+    // Stable mode has no WebRTC preamble to wait for - reveal the channel
+    // picker (and auto-connect) as soon as the WS is up.
+    ws.readyState == WebSocket.OPEN
+      ? revealChannelsAndAutoConnect()
+      : onWSReady.push(revealChannelsAndAutoConnect);
+  }
 }
 
 // Call the initialization function

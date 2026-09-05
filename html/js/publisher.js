@@ -20,6 +20,15 @@ var debug = function (...args) {
   console.log(...args);
 };
 
+// Shows the currently active microphone's name in the output view
+var updateMicrophoneDisplay = function (track) {
+  const micNameEl = document.getElementById("microphone-name");
+  if (micNameEl) {
+    micNameEl.textContent =
+      track && track.label ? track.label : "Default Microphone";
+  }
+};
+
 // Function to create amplified audio stream
 var createAmplifiedStream = function (originalStream) {
   if (!window.audioContext) {
@@ -517,10 +526,11 @@ function attemptReconnect() {
         .getUserMedia(audioConstraints)
         .then((stream) => {
           audioTrack = stream.getAudioTracks()[0];
-          
+          updateMicrophoneDisplay(audioTrack);
+
           // Create amplified stream for WebRTC and recording
           amplifiedStream = createAmplifiedStream(stream);
-          
+
           // Use amplified stream for WebRTC
           amplifiedStream.getTracks().forEach((track) => pc.addTrack(track, amplifiedStream));
 
@@ -676,7 +686,8 @@ navigator.mediaDevices
   .getUserMedia(constraints)
   .then((stream) => {
     audioTrack = stream.getAudioTracks()[0];
-    
+    updateMicrophoneDisplay(audioTrack);
+
     // Create amplified stream for WebRTC and recording
     amplifiedStream = createAmplifiedStream(stream);
     
