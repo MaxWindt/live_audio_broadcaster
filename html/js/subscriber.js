@@ -23,6 +23,81 @@ var _stableTargetMargin = 1.5;
 // screen turns off. Read once per load; toggling it triggers a page reload.
 var _stableMode = localStorage.getItem("lab_stable_mode") === "1";
 
+// --- Keepalive tone (WebRTC mode only) ---
+// The browser doesn't treat an <audio srcObject=MediaStream> the way it
+// treats plain progressive playback, so a WebRTC tab can lose audio focus
+// and get suspended in the background even though audio is genuinely
+// playing. Chrome's silence detector inspects the raw digital signal
+// (threshold ~-72dBFS), not what the speaker can reproduce, so a real but
+// inaudible tone keeps the tab marked "audible" without adding any latency
+// to the actual voice. 20Hz is below what phone speakers/earbuds can
+// reproduce at all; -37dBFS clears the silence threshold with margin.
+// Ultrasonic is deliberately avoided - it's audible as a whine to many
+// listeners/headphones and gets *more* audible on real hardware, not less.
+var _keepaliveUrl = null;
+
+function keepaliveUrl() {
+  if (_keepaliveUrl) return _keepaliveUrl;
+
+  // 8kHz/mono is plenty for a 20Hz tone and keeps this small (160KB vs
+  // 2.9MB at 48kHz). 10s = exactly 200 cycles (8000/20), so the loop wraps
+  // sample-accurately with no click - and clears Chrome's ~5s "transient
+  // audio" cutoff, below which it ducks rather than holding audio focus.
+  const rate = 8000, seconds = 10, hz = 20, amp = 0.02;
+  const samples = rate * seconds;
+  const view = new DataView(new ArrayBuffer(44 + samples * 2));
+  const ascii = function (off, s) {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+  };
+
+  ascii(0, "RIFF");
+  view.setUint32(4, 36 + samples * 2, true);
+  ascii(8, "WAVEfmt ");
+  view.setUint32(16, 16, true);        // fmt chunk size
+  view.setUint16(20, 1, true);         // PCM
+  view.setUint16(22, 1, true);         // mono
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);  // byte rate
+  view.setUint16(32, 2, true);         // block align
+  view.setUint16(34, 16, true);        // bits per sample
+  ascii(36, "data");
+  view.setUint32(40, samples * 2, true);
+
+  for (let i = 0; i < samples; i++) {
+    view.setInt16(44 + i * 2, Math.round(Math.sin((2 * Math.PI * hz * i) / rate) * amp * 32767), true);
+  }
+
+  _keepaliveUrl = URL.createObjectURL(new Blob([view.buffer], { type: "audio/wav" }));
+  return _keepaliveUrl;
+}
+
+function startKeepalive() {
+  // Stable mode already plays a real <audio src> - it IS what this imitates.
+  if (_stableMode) return;
+
+  const ka = document.getElementById("keepalive");
+  if (!ka || !ka.paused) return; // idempotent
+  if (!ka.src) ka.src = keepaliveUrl();
+  ka.play().catch(function () {
+    // No user activation yet (auto-connect path) - retry on the first tap.
+    document.addEventListener("click", startKeepalive, { once: true });
+  });
+}
+
+function stopKeepalive() {
+  const ka = document.getElementById("keepalive");
+  if (ka) ka.pause();
+}
+
+// Material Icons render their glyph as literal ligature text (e.g. "language"),
+// which leaks into textContent. Strip .material-icons children before reading
+// a channel button's visible label so that text doesn't end up in the UI.
+function getChannelLabel(buttonElement) {
+  const clone = buttonElement.cloneNode(true);
+  clone.querySelectorAll(".material-icons").forEach((el) => el.remove());
+  return clone.textContent.trim();
+}
+
 // --- Media Session (lock screen "Now Playing" + tells mobile OS this tab is an active audio player) ---
 function setupMediaSession(audio) {
   if (!("mediaSession" in navigator)) return;
@@ -211,7 +286,7 @@ function initializeSubscriber() {
       buttonElement.classList.add("playing");
 
       // Store display name for Media Session metadata (lock screen title)
-      _currentChannelName = buttonElement.textContent.trim() || buttonElement.id;
+      _currentChannelName = getChannelLabel(buttonElement) || buttonElement.id;
 
       // Connect to the selected channel
       let params = {};
@@ -219,6 +294,11 @@ function initializeSubscriber() {
 
       // Store the channel selection
       localStorage.setItem("lab_channel", params.Channel);
+
+      // Start before the WebRTC audio element exists - if a platform (iOS)
+      // only allows one playing element at a time, the one started first
+      // loses, which should be the keepalive, never the actual voice.
+      startKeepalive();
 
       if (_stableMode) {
         // No WebRTC session needed - just point <audio> at the HTTP stream.
@@ -270,9 +350,10 @@ function initializeSubscriber() {
         const channelElement = document.getElementById(params.Channel);
         if (channelElement) {
           channelElement.classList.add("playing");
-          _currentChannelName = channelElement.textContent.trim() || channelElement.id;
+          _currentChannelName = getChannelLabel(channelElement) || channelElement.id;
           document.getElementById("spinner").classList.remove("hidden");
           startLoadingTimeout();
+          startKeepalive();
           if (_stableMode) {
             connectStable(params.Channel);
           } else {
@@ -521,6 +602,7 @@ function initializeSubscriber() {
       clearPauseTimer(); // Clear timer when playing
       clearLoadingTimeout();
       requestWakeLock();
+      startKeepalive();
       if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
     };
 
@@ -531,6 +613,7 @@ function initializeSubscriber() {
       clearPauseTimer(); // Clear any existing timer
       pauseTimer = setTimeout(handleLongPause, 60000); // 1 minute
       releaseWakeLock();
+      stopKeepalive();
       if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
     };
 

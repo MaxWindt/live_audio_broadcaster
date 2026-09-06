@@ -49,6 +49,8 @@
       </div>
       <div id="output" class="hidden">
         <div id="media"></div>
+        <!-- Kept outside #media: createAudioElement() wipes that container. -->
+        <audio id="keepalive" loop playsinline></audio>
       </div>
       <div id="supported">
         <div id="channels" class="hidden">
