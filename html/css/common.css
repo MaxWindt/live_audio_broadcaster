@@ -10,6 +10,43 @@
     U+FEFF, U+FFFD;
 }
 
+/* Same palette roles as the subscriber page's default/dark themes, so the
+   two pages read as one product. Unlike the subscriber page (manual theme
+   picker), this page just follows the OS setting. */
+:root {
+  color-scheme: light dark;
+
+  --background-color: #ffffff;
+  --button-background-color: #ffe082;
+  --button-text-color: #000;
+  --play-button-color: #d62828;
+  --text-color: #000;
+  --muted-color: #555;
+  --input-background: #fff;
+  --input-border: rgba(0, 0, 0, 0.3);
+  --card-background: #f5f5f5;
+  --card-border: rgba(0, 0, 0, 0.15);
+  --error-background: #fff1f1;
+  --error-border: #8c4d4d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: #1e1e1e;
+    --button-background-color: #333;
+    --button-text-color: #fff;
+    --play-button-color: #ffac91;
+    --text-color: #fff;
+    --muted-color: #aaa;
+    --input-background: #2a2a2a;
+    --input-border: rgba(255, 255, 255, 0.3);
+    --card-background: rgba(255, 255, 255, 0.06);
+    --card-border: rgba(255, 255, 255, 0.15);
+    --error-background: rgba(255, 100, 100, 0.12);
+    --error-border: #ff8a80;
+  }
+}
+
 html {
   margin: 0;
   padding: 0;
@@ -17,11 +54,11 @@ html {
 
 body {
   line-height: 1;
-  font-family: sans-serif;
+  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
   padding: 5px;
   margin: 0;
-  background-image: url("../img/whitenoise.png");
-  background-repeat: repeat;
+  background-color: var(--background-color);
+  color: var(--text-color);
 }
 
 textarea {
@@ -32,19 +69,40 @@ textarea {
   padding: 20px;
 }
 
-#input-form table {
-  margin: 0 auto;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 320px;
+  margin: 0 auto 16px;
+  text-align: left;
 }
 
-#input-form th {
-  text-align: right;
-  vertical-align: middle;
-  padding-right: 10px;
-  padding-bottom: 10px;
+.form-group label {
+  font-weight: bold;
+  font-size: 0.85em;
+  margin-bottom: 6px;
 }
-#input-form td {
-  text-align: left;
-  padding-bottom: 10px;
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select {
+  font-size: 1em;
+  font-family: inherit;
+  color: var(--text-color);
+  background-color: var(--input-background);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
 }
 
 .container {
@@ -58,7 +116,7 @@ textarea {
 #footer {
   margin-top: 40px;
   font-size: 0.8em;
-  border-top: 1px #ddd solid;
+  border-top: 1px solid var(--card-border);
   padding: 10px;
 }
 
@@ -77,8 +135,8 @@ label {
 }
 
 #errors {
-  border: 2px solid #8c4d4d;
-  background-color: #fff1f1;
+  border: 2px solid var(--error-border);
+  background-color: var(--error-background);
   min-height: 50px;
   border-radius: 2px;
   font-size: 1.2em;
@@ -91,7 +149,9 @@ label {
 }
 
 #messages {
-  border: 2px solid #fff;
+  border: 1px solid var(--card-border);
+  background-color: var(--card-background);
+  border-radius: 6px;
   text-align: left;
   padding: 10px;
 }
@@ -112,7 +172,7 @@ label {
   font-family: "Pacifico", cursive;
   margin: 10px 0;
   padding-bottom: 20px;
-  border-bottom: 1px #ddd solid;
+  border-bottom: 1px solid var(--card-border);
 }
 
 .logo {
@@ -121,7 +181,7 @@ label {
 }
 .subtitle {
   font-size: 1.2em;
-  color: blue;
+  color: var(--play-button-color);
   margin: 0 10px;
 }
 
@@ -129,11 +189,14 @@ label {
   width: 200px;
   height: 50px;
   margin: 20px 10px;
+  background-color: var(--play-button-color);
+  color: #fff;
+  border: none;
 }
 
 #github-logo {
   font-size: 2em;
-  color: #555;
+  color: var(--muted-color);
 }
 
 #channels ul {
@@ -158,7 +221,7 @@ label {
 #microphone {
   font-size: 2em;
   cursor: pointer;
-  color: #555;
+  color: var(--muted-color);
 }
 
 @keyframes colorPulse {
@@ -193,32 +256,34 @@ label {
 
 /* Button */
 
-/* This button was generated using CSSButtonGenerator.com */
 .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   margin: 10px;
-  box-shadow: inset 0px 1px 0px 0px #ffffff;
-  background-color: #f9f9f9;
-  border: 1px solid #bdbdbd;
-  border-radius: 5px;
-  color: #666666;
+  padding: 10px 20px;
+  background-color: var(--button-background-color);
+  color: var(--button-text-color);
+  border: none;
+  border-radius: 999px;
   font-size: 1em;
   font-weight: bold;
   text-align: center;
-  text-shadow: 1px 1px 0px #ffffff;
 }
 .button:hover {
-  background-color: #e9e9e9;
+  filter: brightness(0.95);
   cursor: pointer;
 }
 .button:active {
-  position: relative;
-  top: 1px;
+  transform: scale(0.97);
 }
 .auto-stop-controls {
   margin: 10px 0;
   padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
 }
 
 .auto-stop-controls input[type="number"] {
@@ -234,8 +299,9 @@ label {
 .volume-controls {
   margin: 10px 0;
   padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
 }
 
 .volume-controls label {
@@ -250,7 +316,7 @@ label {
 }
 
 .volume-controls small {
-  color: #666;
+  color: var(--muted-color);
   font-size: 0.9em;
 }
 
@@ -283,7 +349,7 @@ label {
   margin: 0 auto;
   width: 15%;
   height: 15%;
-  background-color: #333;
+  background-color: var(--text-color);
   border-radius: 100%;
   -webkit-animation: sk-circleFadeDelay 1.2s infinite ease-in-out both;
   animation: sk-circleFadeDelay 1.2s infinite ease-in-out both;

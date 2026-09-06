@@ -6,6 +6,7 @@
 
     <title>Babelcast Publisher</title>
 
+    <link href="font/font.css" rel="stylesheet" />
     <link href="css/common.css" rel="stylesheet" />
     <link href="fontello/css/fontello.css" rel="stylesheet" />
   </head>
@@ -28,24 +29,20 @@
             clicking 'Connect'.<br />If the server requires a password enter it
             below, otherwise leave blank.
           </p>
-          <table>
-            <tr>
-              <th>Channel:</th>
-              <td><input type="text" id="channel" required /></td>
-            </tr>
-            <tr class="hidden">
-              <th>Password:</th>
-              <td><input type="password" id="password" /></td>
-            </tr>
-            <tr>
-              <th>Microphone:</th>
-              <td style="width: 60%">
-                <select id="microphone-select">
-                  <option value="default">Default Microphone</option>
-                </select>
-              </td>
-            </tr>
-          </table>
+          <div class="form-group">
+            <label for="channel">Channel</label>
+            <input type="text" id="channel" required />
+          </div>
+          <div class="form-group hidden">
+            <label for="password">Password</label>
+            <input type="password" id="password" />
+          </div>
+          <div class="form-group">
+            <label for="microphone-select">Microphone</label>
+            <select id="microphone-select">
+              <option value="default">Default Microphone</option>
+            </select>
+          </div>
           <button id="connect-button" class="button hidden">Connect</button>
           <div id="spinner">
             <p>Negotiating connection...</p>
@@ -89,7 +86,7 @@
               value="60"
               min="1"
               max="180"
-            />min
+            />min of silence
           </div>
           
           <div class="volume-controls">
